@@ -1,0 +1,268 @@
+{
+  "entities": {
+    "Prompt": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Prompt",
+      "type": "object",
+      "description": "Represents a user-defined prompt for text or UI generation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the prompt."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Prompt)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the prompt."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the prompt was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the prompt was last updated.",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the prompt's intention or usage."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "text",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Maximus Generator application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GenerationConfiguration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GenerationConfiguration",
+      "type": "object",
+      "description": "Represents the configuration settings for text and UI element generation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the configuration."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N GenerationConfiguration)"
+        },
+        "maxTextLength": {
+          "type": "number",
+          "description": "Maximum length of the generated text."
+        },
+        "llmTool": {
+          "type": "string",
+          "description": "The chosen Large Language Model tool for generation."
+        },
+        "temperature": {
+          "type": "number",
+          "description": "The generation temperature."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the configuration was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the configuration was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "maxTextLength",
+        "llmTool",
+        "temperature",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GeneratedContent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GeneratedContent",
+      "type": "object",
+      "description": "Represents the generated text or UI elements produced by the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the generated content."
+        },
+        "promptId": {
+          "type": "string",
+          "description": "Reference to Prompt. (Relationship: Prompt 1:N GeneratedContent)"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "The type of generated content (e.g., 'text', 'ui-element')."
+        },
+        "content": {
+          "type": "string",
+          "description": "The actual generated content (text or UI element definition)."
+        },
+        "generationConfigurationId": {
+          "type": "string",
+          "description": "Reference to GenerationConfiguration. (Relationship: GenerationConfiguration 1:N GeneratedContent)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the content was generated.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the content was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "promptId",
+        "contentType",
+        "content",
+        "generationConfigurationId",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Employs path-based ownership for security.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/prompts/{promptId}",
+        "definition": {
+          "entityName": "Prompt",
+          "schema": {
+            "$ref": "#/backend/entities/Prompt"
+          },
+          "description": "Stores prompts created by users. Authorization is based on the parent 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "promptId",
+              "description": "The unique identifier for the prompt."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/generationConfigurations/{generationConfigurationId}",
+        "definition": {
+          "entityName": "GenerationConfiguration",
+          "schema": {
+            "$ref": "#/backend/entities/GenerationConfiguration"
+          },
+          "description": "Stores generation configurations created by users. Authorization is based on the parent 'userId'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "generationConfigurationId",
+              "description": "The unique identifier for the generation configuration."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId}",
+        "definition": {
+          "entityName": "GeneratedContent",
+          "schema": {
+            "$ref": "#/backend/entities/GeneratedContent"
+          },
+          "description": "Stores generated content associated with prompts. Authorization is based on the 'userId' and 'promptId' in the path.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "promptId",
+              "description": "The unique identifier for the prompt."
+            },
+            {
+              "name": "generatedContentId",
+              "description": "The unique identifier for the generated content."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, DBAC, and support secure list operations (QAPs). It leverages path-based ownership for user-specific data and denormalization to avoid `get()` calls in security rules. All collections are structurally segregated based on their security posture.\n\n1.  **Users Collection:** `/users/{userId}` stores user profiles. It employs path-based ownership.\n2.  **User-Owned Prompts:** `/users/{userId}/prompts/{promptId}` stores prompts created by users. Authorization is based on the parent `userId`. The `prompt` documents do not need to duplicate the `userId` as it's embedded within the path.\n3.  **User-Owned Generation Configurations:** `/users/{userId}/generationConfigurations/{generationConfigurationId}` stores generation configurations. Authorization is based on path-based ownership.\n4.  **Generated Content:** `/users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId}` stores generated content associated with prompts. Authorization is based on the `userId` and `promptId` embedded in the path. This structure ensures that only the owner of the prompt can access the generated content. A user can list generated content via collection group queries.\n\nThis structure achieves Authorization Independence by relying on path-based ownership, eliminating the need for `get()` calls to parent documents. It facilitates secure `list` operations by segregating data based on ownership. DBAC is ensured as roles are managed through Firebase Authentication's built-in user management, and authorization rules use `request.auth.uid`."
+  }
+}

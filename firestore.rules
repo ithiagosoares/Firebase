@@ -1,0 +1,131 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for the Maximus Generator application.
+ * All data is nested under /users/{userId}, ensuring that users can only access their own data.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information.
+ * - /users/{userId}/prompts/{promptId}: Stores prompts created by users.
+ * - /users/{userId}/generationConfigurations/{generationConfigurationId}: Stores generation configurations.
+ * - /users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId}: Stores generated content associated with prompts.
+ *
+ * Key Security Decisions:
+ * - Users can only access their own data due to path-based ownership.
+ * - Listing other users is disallowed for privacy.
+ * - The security posture defaults to strict access control, denying access unless explicitly allowed.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile information.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user with matching userId in request.auth.uid.
+     * @allow (get, update, delete) - Authenticated user with matching userId.
+     * @deny (list) - Listing users is not allowed.
+     * @deny (create) - Non-matching userId.
+     * @principle Enforces document ownership for writes.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing users is not allowed.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to prompts created by users.
+     * @path /users/{userId}/prompts/{promptId}
+     * @allow (create, get, list, update, delete) - Authenticated user with matching userId.
+     * @deny (create, get, list, update, delete) - Non-matching userId.
+     * @principle Restricts access to a user's own prompts.
+     */
+    match /users/{userId}/prompts/{promptId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+        function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to generation configurations created by users.
+     * @path /users/{userId}/generationConfigurations/{generationConfigurationId}
+     * @allow (create, get, list, update, delete) - Authenticated user with matching userId.
+     * @deny (create, get, list, update, delete) - Non-matching userId.
+     * @principle Restricts access to a user's own generation configurations.
+     */
+    match /users/{userId}/generationConfigurations/{generationConfigurationId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+        function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Controls access to generated content associated with prompts.
+     * @path /users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId}
+     * @allow (create, get, list, update, delete) - Authenticated user with matching userId and promptId.
+     * @deny (create, get, list, update, delete) - Non-matching userId or promptId.
+     * @principle Restricts access to generated content to the owner of the associated prompt.
+     */
+    match /users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
