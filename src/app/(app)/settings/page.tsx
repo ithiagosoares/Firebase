@@ -39,6 +39,7 @@ import { updateProfile } from "firebase/auth"
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('account');
 
   // Efeito para ler o hash da URL na montagem do componente
@@ -178,29 +179,40 @@ export default function SettingsPage() {
 
   const handlePlanAction = async (planId: string, priceId?: string) => {
     if (!authUser || !priceId) {
-      toast({ variant: "destructive", title: "Ação não disponível", description: "Não é possível assinar este plano no momento." });
+      toast({ variant: "destructive", title: "Ação indisponível", description: "Este plano não possui um ID de produto para cobrança." });
       return;
     }
-  
+
     setIsSubmitting(planId);
-  
+
     try {
       const functions = getFunctions(undefined, 'southamerica-east1');
       const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
-      
-      const response = await createCheckoutSession({ priceId: priceId, userId: authUser.uid });
 
-      const { url } = response.data as { url: string };
-  
-      if (url) {
-        window.open(url, 'stripe-checkout', `width=600,height=800,top=${(window.innerHeight / 2) - 400},left=${(window.innerWidth / 2) - 300}`);
+      // Constrói a URL base para retorno após o checkout
+      const baseUrl = `${window.location.origin}${pathname}`;
+      
+      const response = await createCheckoutSession({ 
+        priceId: priceId, 
+        baseUrl: baseUrl
+      });
+
+      const data = response.data as { url: string };
+
+      if (data.url) {
+        // Redireciona o usuário para a página de checkout da Stripe
+        window.location.href = data.url;
       } else {
-        throw new Error("URL de checkout não recebida.");
+        throw new Error("URL de checkout não recebida do backend.");
       }
-  
+
     } catch (error) {
       console.error("Erro ao criar sessão de checkout:", error);
-      toast({ variant: "destructive", title: "Erro ao iniciar pagamento", description: "Não foi possível redirecionar para o checkout." });
+      toast({ 
+        variant: "destructive", 
+        title: "Erro ao Iniciar Pagamento", 
+        description: error instanceof Error ? error.message : "Não foi possível redirecionar para a página de checkout."
+      });
     } finally {
       setIsSubmitting(null);
     }
