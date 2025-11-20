@@ -30,7 +30,6 @@ import { useUser, useAuth, useFirestore, useMemoFirebase } from "@/firebase/prov
 // Utilitários e Funções do Firebase
 import { doc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
-import { getFunctions, httpsCallable } from "firebase/functions"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { updateProfile } from "firebase/auth"
@@ -173,50 +172,9 @@ export default function SettingsPage() {
 
   const plans = [
     { id: "trial", name: "Trial", price: "Grátis", priceDescription: "Para testar", features: ["Funcionalidade 1", "Funcionalidade 2"], isCurrent: (userData as any)?.plan === "Trial" || !(userData as any)?.plan, actionText: "Plano atual" },
-    { id: "professional", name: "Profissional", price: "R$ 99", priceDescription: "/mês", highlight: "Mais escolhido", priceId: "price_1PbTrwRpH5Xziv3c2yT7f4gU", features: ["Tudo do Trial", "Funcionalidade 3"], isCurrent: (userData as any)?.plan === "Profissional", actionText: "Assinar agora" },
-    { id: "team", name: "Equipe", price: "R$ 199", priceDescription: "/mês", priceId: "price_1PbTsjRpH5Xziv3c6r8qF8wJ", features: ["Tudo do Profissional", "Suporte prioritário"], isCurrent: (userData as any)?.plan === "Equipe", actionText: "Fazer Upgrade" },
+    { id: "professional", name: "Profissional", price: "R$ 99", priceDescription: "/mês", highlight: "Mais escolhido", paymentLink: "https://buy.stripe.com/4gMfZhaXz9JN3Bh0R9ffy00", features: ["Tudo do Trial", "Funcionalidade 3"], isCurrent: (userData as any)?.plan === "Profissional", actionText: "Assinar agora" },
+    { id: "team", name: "Equipe", price: "R$ 199", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/4gMfZhaXz9JN3Bh0R9ffy00", features: ["Tudo do Profissional", "Suporte prioritário"], isCurrent: (userData as any)?.plan === "Equipe", actionText: "Fazer Upgrade" },
   ];
-
-  const handlePlanAction = async (planId: string, priceId?: string) => {
-    if (!authUser || !priceId) {
-      toast({ variant: "destructive", title: "Ação indisponível", description: "Este plano não possui um ID de produto para cobrança." });
-      return;
-    }
-
-    setIsSubmitting(planId);
-
-    try {
-      const functions = getFunctions(undefined, 'southamerica-east1');
-      const createCheckoutSession = httpsCallable(functions, 'createCheckoutSession');
-
-      // Constrói a URL base para retorno após o checkout
-      const baseUrl = `${window.location.origin}${pathname}`;
-      
-      const response = await createCheckoutSession({ 
-        priceId: priceId, 
-        baseUrl: baseUrl
-      });
-
-      const data = response.data as { url: string };
-
-      if (data.url) {
-        // Redireciona o usuário para a página de checkout da Stripe
-        window.location.href = data.url;
-      } else {
-        throw new Error("URL de checkout não recebida do backend.");
-      }
-
-    } catch (error) {
-      console.error("Erro ao criar sessão de checkout:", error);
-      toast({ 
-        variant: "destructive", 
-        title: "Erro ao Iniciar Pagamento", 
-        description: error instanceof Error ? error.message : "Não foi possível redirecionar para a página de checkout."
-      });
-    } finally {
-      setIsSubmitting(null);
-    }
-  };
 
   return (
     <>
@@ -343,34 +301,44 @@ export default function SettingsPage() {
               <CardDescription>Escolha o plano que melhor se adapta às suas necessidades.</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-6">
-              {plans.map((plan) => (
-                <Card key={plan.id} className={cn("flex flex-col", plan.highlight && "border-primary")}>
-                  <CardHeader>
-                    <CardTitle className="flex justify-between items-center">
-                      {plan.name}
-                      {plan.highlight && <Badge variant="secondary">{plan.highlight}</Badge>}
-                    </CardTitle>
-                    <p className="text-2xl font-bold">{plan.price} <span className="text-sm font-normal text-muted-foreground">{plan.priceDescription}</span></p>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary" />{feature}</li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button 
-                      className="w-full" 
-                      onClick={() => handlePlanAction(plan.id, plan.priceId)}
-                      disabled={plan.isCurrent || isSubmitting === plan.id}
-                    >
-                      {isSubmitting === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {plan.isCurrent ? "Plano Atual" : "Escolher Plano"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+              {plans.map((plan) => {
+                const stripeId = (userData as any)?.stripeId;
+                const paymentUrl = plan.paymentLink && stripeId 
+                  ? `${plan.paymentLink}?customer=${stripeId}` 
+                  : plan.paymentLink;
+
+                return (
+                  <Card key={plan.id} className={cn("flex flex-col", plan.highlight && "border-primary")}>
+                    <CardHeader>
+                      <CardTitle className="flex justify-between items-center">
+                        {plan.name}
+                        {plan.highlight && <Badge variant="secondary">{plan.highlight}</Badge>}
+                      </CardTitle>
+                      <p className="text-2xl font-bold">{plan.price} <span className="text-sm font-normal text-muted-foreground">{plan.priceDescription}</span></p>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary" />{feature}</li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter>
+                      {paymentUrl ? (
+                        <Link href={paymentUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                          <Button className="w-full" disabled={plan.isCurrent || !stripeId}>
+                            {plan.isCurrent ? "Plano Atual" : "Escolher Plano"}
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button className="w-full" disabled={plan.isCurrent}>
+                          {plan.actionText}
+                        </Button>
+                      )}
+                    </CardFooter>
+                  </Card>
+                )
+              })}
             </CardContent>
           </Card>
         </TabsContent>
