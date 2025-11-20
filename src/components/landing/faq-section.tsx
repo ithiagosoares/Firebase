@@ -43,27 +43,18 @@ export function FaqSection() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-gray-900">
-            Perguntas frequentes:
+            Ainda tem dúvidas? Veja se podemos ajudar:
           </h2>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="relative flex items-center justify-center min-h-[500px]">
+            <div className="flex items-center justify-center">
                  <Image
-                    alt="Fundo com brilho gradiente"
-                    className="absolute inset-0 w-full h-full object-contain opacity-75 blur-3xl"
-                    aria-hidden="true"
-                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Ellipse%202.svg?alt=media&token=e4b6008a-9288-4501-9b74-13a8374d7310"
-                    width="600"
-                    height="600"
-                />
-                 <Image
-                    alt="Gráfico de crescimento de pacientes"
-                    className="relative mx-auto h-[500px] w-auto object-contain"
-                    height="500"
-                    width="400"
-                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/iphone_graph.svg?alt=media&token=bd02f306-cd71-4e7f-b072-cee5121ff8ff"
-                    data-ai-hint="iphone graph"
+                    alt="Ilustração 3D de um profissional de saúde com um ponto de interrogação, representando perguntas frequentes."
+                    className="relative mx-auto max-w-md w-full"
+                    height="450"
+                    width="450"
+                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Doctor_Question.png?alt=media&token=8558bed9-9b1e-4475-ba72-ed6969977b26"
                 />
             </div>
             <div className="space-y-4">

@@ -5,6 +5,7 @@ import { FaqSection } from "@/components/landing/faq-section";
 import { Footer } from "@/components/landing/footer";
 import { HeroSection } from "@/components/landing/hero-section";
 import { LandingHeader } from "@/components/landing/landing-header";
+import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ProblemSection } from "@/components/landing/problem-section";
 import { SocialProofSection } from "@/components/landing/social-proof-section";
 import { SolutionSection } from "@/components/landing/solution-section";
@@ -17,6 +18,7 @@ export default function LandingPage() {
       <main className="flex-1">
         <HeroSection />
         <ProblemSection />
+        <HowItWorksSection />
         <SolutionSection />
         <SocialProofSection />
         <FaqSection />
@@ -26,3 +28,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+// Forcing cache invalidation with a trivial change

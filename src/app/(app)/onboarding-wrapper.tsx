@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { OnboardingTour } from "@/components/onboarding-tour";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { type User } from "@/lib/types";
 import { doc } from "firebase/firestore";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
@@ -48,7 +48,7 @@ export function OnboardingWrapper({ userDocRef, isUserDataLoading, userData }: O
   }
 
   if (showOnboarding) {
-    return <OnboardingTour onComplete={handleOnboardingComplete} />;
+    return <OnboardingChecklist userData={userData} userDocRef={userDocRef} onClose={handleOnboardingComplete} />;
   }
 
   return null;

@@ -16,12 +16,12 @@ export function HeroSection() {
     <section className="w-full py-8 md:py-12 lg:py-16 bg-white overflow-hidden">
       <div className="container mx-auto px-4 md:px-6">
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:gap-16">
-          <div className="flex flex-col justify-center space-y-4 text-center lg:text-left">
+          <div className="flex flex-col justify-center space-y-4 text-center lg:text-left lg:pl-12 xl:pl-20">
             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl lg:text-5xl/[1.2] text-gray-900 mx-auto lg:mx-0 max-w-lg">
-              Encha a agenda da sua clínica com <span className="bg-gradient-to-r from-[#00B3A4] to-[#05326D] bg-clip-text text-transparent">lembretes automáticos</span> pelo WhatsApp 📲
+              Encha sua agenda com <span className="bg-gradient-to-r from-[#00B3A4] to-[#05326D] bg-clip-text text-transparent">lembretes automáticos</span> no WhatsApp.
             </h1>
             <p className="max-w-[600px] text-gray-600 md:text-xl mx-auto lg:mx-0">
-              O lembrete inteligente que aumenta o <span className="bg-gradient-to-r from-[#00B3A4] to-[#05326D] bg-clip-text text-transparent font-medium">retorno</span> da sua clínica odontológica.
+              Recupere até <span className="bg-gradient-to-r from-[#00B3A4] to-[#05326D] bg-clip-text text-transparent font-medium">20% do faturamento</span> que você perde com faltas e desmarcações de pacientes.
             </p>
 
             <div className="flex flex-col gap-4 items-center lg:items-start">
@@ -41,23 +41,13 @@ export function HeroSection() {
             </div>
           </div>
           
-          <div className="relative flex items-center justify-center lg:min-h-[500px] mt-8 lg:mt-0">
-             <Image
-                alt="Fundo com brilho gradiente"
-                className="absolute inset-0 w-full h-full object-contain opacity-75 blur-3xl"
-                aria-hidden="true"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Ellipse%202.svg?alt=media&token=e4b6008a-9288-4501-9b74-13a8374d7310"
-                width="600"
-                height="600"
-            />
+          <div className="relative flex items-center justify-center mt-8 lg:mt-0">
             <Image
-                alt="Imagem de um iPhone mostrando a interface do aplicativo"
-                className="relative mx-auto rounded-xl w-full max-w-[280px] sm:max-w-[320px] lg:max-w-sm"
-                height="602"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Iphone_boxes.svg?alt=media&token=938ad8f1-f01d-4864-b47a-800f65d8cb1b"
-                width="361"
-                priority
-                quality={100}
+                alt="Ilustração de uma dentista feliz com sua agenda cheia"
+                className="relative mx-auto w-full max-w-md"
+                height="500"
+                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Girl_calendar.png?alt=media&token=64cf70e0-f98d-4fe7-93d8-8a92ef9aa9b8"
+                width="500"
             />
           </div>
         </div>

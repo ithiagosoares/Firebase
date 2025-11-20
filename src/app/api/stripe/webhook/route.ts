@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2024-06-20",
+    apiVersion: "2024-04-10", // Corrigido
   });
   
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
-  const headersList = headers();
+  const headersList = await headers(); // Corrigido
   const sig = headersList.get("stripe-signature");
   const reqBuffer = await req.arrayBuffer();
 

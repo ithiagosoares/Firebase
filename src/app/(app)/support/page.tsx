@@ -1,6 +1,5 @@
-"use client"
+'use client'
 
-import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
 import {
   Accordion,
@@ -14,27 +13,71 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { HelpCircle } from "lucide-react"
+import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { doc } from "firebase/firestore"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 const faqs = [
     {
-      question: "Como integro minha API do WhatsApp?",
-      answer: "Vá para a tela de Configurações, clique na aba 'WhatsApp API' e insira sua chave de API fornecida pelo seu provedor do WhatsApp Business."
+      question: "Como conecto meu celular para enviar mensagens?",
+      answer: "Vá para a tela de Configurações, clique na aba 'WhatsApp Web' e leia o QR Code com o seu celular usando o aplicativo do WhatsApp."
     },
     {
       question: "Posso usar variáveis nos templates?",
       answer: "Sim! Você pode usar variáveis como {{NOME_CLIENTE}} e {{DATA_CONSULTA}} no conteúdo do seu template. Elas serão substituídas automaticamente."
     },
     {
-      question: "Como funciona a geração de templates por IA?",
-      answer: "Na tela de criação de templates, vá para a aba 'Gerar com IA', forneça o contexto da mensagem e o tom desejado, e nossa IA irá gerar até 10 sugestões para você."
-    },
-    {
       question: "Onde vejo as mensagens que foram enviadas?",
       answer: "A tela 'Caixa de Saída' mostra um histórico de todas as mensagens agendadas, enviadas e que falharam."
+    },
+    {
+      question: "Por que minha mensagem falhou?",
+      answer: "Uma falha pode ocorrer por vários motivos: o número de telefone do destinatário pode estar incorreto, sua conexão com o WhatsApp pode ter sido perdida, ou pode haver um problema com o provedor de serviços. Verifique sempre os detalhes na 'Caixa de Saída' e, se o problema persistir, confirme suas configurações."
     }
 ]
 
 export default function SupportPage() {
+  const { user: authUser } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!authUser) return null;
+    return doc(firestore, "users", authUser.uid);
+  }, [firestore, authUser]);
+
+  const handleResetTour = async () => {
+    if (!userDocRef) return;
+
+    try {
+      // Reseta o progresso do onboarding no Firestore
+      await setDocumentNonBlocking(userDocRef, {
+        hasCompletedOnboarding: false,
+        onboardingProgress: []
+      }, { merge: true });
+
+      // Mostra uma notificação de sucesso
+      toast({ 
+        title: "Tour Reiniciado!", 
+        description: "O guia de início rápido aparecerá agora. Estamos redirecionando você para o Dashboard."
+      });
+
+      // Redireciona para o dashboard para começar o tour
+      router.push('/dashboard');
+
+    } catch (error) {
+      console.error("Erro ao reiniciar o tour:", error);
+      toast({ 
+        variant: "destructive",
+        title: "Erro", 
+        description: "Não foi possível reiniciar o tour. Tente novamente."
+      });
+    }
+  };
+
   return (
     <>
       <PageHeader title="Suporte" />
@@ -46,11 +89,9 @@ export default function SupportPage() {
                     <CardDescription>Não sabe por onde começar? Refaça nosso tour introdutório a qualquer momento.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild>
-                      <Link href="/dashboard?tour=true">
+                    <Button onClick={handleResetTour}>
                         <HelpCircle className="mr-2 h-4 w-4" />
-                        Refazer Tour Introdutório
-                      </Link>
+                        Refazer Tour Guiado
                     </Button>
                 </CardContent>
             </Card>

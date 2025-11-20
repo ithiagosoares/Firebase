@@ -4,8 +4,8 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'VitalLink',
-  description: 'Gerenciamento inteligente para clínicas e consultórios.',
+  title: 'VitalLink | Aumente o Retorno de Pacientes com Automação',
+  description: 'Pare de perder pacientes e faturamento. A VitalLink automatiza a confirmação de consultas e reativa pacientes inativos via WhatsApp. Comece a usar em 5 minutos.',
 };
 
 export default function RootLayout({

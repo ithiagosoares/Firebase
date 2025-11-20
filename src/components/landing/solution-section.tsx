@@ -1,8 +1,9 @@
 "use client"
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { CalendarClock, Zap, MessageCircle, BarChart, Lock, Heart, PlayCircle, Banknote } from "lucide-react"
+import { CalendarClock, Zap, MessageCircle, BarChart, Lock, Heart } from "lucide-react"
 import Link from "next/link"
 
 const benefits = [
@@ -42,7 +43,7 @@ export function SolutionSection() {
   return (
     <section className="w-full py-20 lg:py-32">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-start">
+        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
           <div className="space-y-4">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-gray-900">
               Por que usar a <span className="bg-gradient-to-r from-primary to-[#05326D] bg-clip-text text-transparent">VitalLink?</span>
@@ -51,11 +52,14 @@ export function SolutionSection() {
               Nossa plataforma automatiza seus lembretes e follow-ups via WhatsApp. Seus pacientes lembram, voltam, e sua clínica cresce — sem esforço manual.
             </p>
           </div>
-          <div className="flex items-center justify-center bg-muted rounded-lg min-h-[300px] lg:min-h-[350px]">
-            <div className="text-center p-8">
-              <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto" />
-              <p className="mt-4 text-muted-foreground">Vídeo demonstrativo em breve</p>
-            </div>
+          <div className="flex items-center justify-center">
+            <Image
+                alt="Ilustração de uma pessoa usando o celular para controlar agendamentos"
+                className="relative mx-auto w-full max-w-sm"
+                height="350"
+                width="350"
+                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/person_using.png?alt=media&token=ca288cf9-fa49-4666-a124-66a22137b806"
+            />
           </div>
         </div>
 
@@ -74,17 +78,7 @@ export function SolutionSection() {
             </Card>
           ))}
         </div>
-
-        <div className="mt-16 text-left">
-          <p className="text-lg text-gray-700 max-w-2xl mb-4">
-             VitalLink é o assistente invisível da sua clínica: lembra seus pacientes, mantém sua agenda cheia e aumenta sua receita.
-          </p>
-          <Button asChild size="lg" className="bg-gradient-to-r from-primary to-[#05326D] text-white font-semibold hover:shadow-lg hover:brightness-110 transition-all duration-300">
-            <Link href="/signup">
-                Quero aumentar meus retornos
-            </Link>
-          </Button>
-        </div>
+        
       </div>
     </section>
   )

@@ -24,12 +24,11 @@ export function CtaSection() {
             </div>
             <div className="hidden md:flex items-center justify-center">
                 <Image
-                    alt="Ilustração 3D de balões de chat"
+                    alt="Ilustração de um botão de play sendo pressionado, simbolizando o início de uma jornada de sucesso."
                     className="mx-auto object-contain"
                     height="250"
                     width="250"
-                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/mensagem.svg?alt=media&token=0ac8575d-1f95-496f-893b-4917d2a73583"
-                    data-ai-hint="message bubble"
+                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/buttom.png?alt=media&token=ad1a612b-81fb-438a-b1c3-7b440dc35a40"
                 />
             </div>
           </div>
