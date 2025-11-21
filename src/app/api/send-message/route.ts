@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
 import { Twilio } from 'twilio';
 
-// Initialize Twilio Client
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER; // The Twilio Sandbox number, e.g., 'whatsapp:+14155238886'
-
-if (!accountSid || !authToken || !twilioWhatsappNumber) {
-  throw new Error('Twilio credentials are not set in environment variables.');
-}
-
-const client = new Twilio(accountSid, authToken);
-
 export async function POST(request: Request) {
+  // Move Twilio Client initialization and credential check inside the POST function
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioWhatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+  // Check for credentials at runtime, not build time
+  if (!accountSid || !authToken || !twilioWhatsappNumber) {
+    console.error('Twilio credentials are not set in environment variables.');
+    // Return a server error instead of throwing an error that crashes the build
+    return NextResponse.json({ error: 'Twilio service is not configured on the server.' }, { status: 500 });
+  }
+
+  const client = new Twilio(accountSid, authToken);
+
   try {
     const { to, body } = await request.json();
 
