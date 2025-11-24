@@ -18,7 +18,7 @@ async function parseTwilioRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        // Inicializa o cliente DENTRO do try, para capturar qualquer erro de inicialização
+        // A inicialização do cliente permanece aqui para capturar erros de autenticação.
         const client = twilio(accountSid, authToken);
 
         const body = await parseTwilioRequest(req);
@@ -38,19 +38,19 @@ export async function POST(req: NextRequest) {
 
         console.log(`--- Resposta enviada para ${from} ---`);
         
+        // Responde 200 OK para a Twilio para confirmar o recebimento.
         return new NextResponse(null, { status: 200 });
 
     } catch (error: any) {
         console.error("### ERRO GRAVE no webhook da Twilio ###", error);
 
-        // --- CORREÇÃO DA DEPURAÇÃO ---
-        // Corrigido o erro de sintaxe adicionando a palavra 'new'.
-        const errorMessage = error.message || 'Um erro desconhecido ocorreu.';
-        const debugResponse = new twilio.twiml.MessagingResponse();
-        debugResponse.message(`Erro no servidor: ${errorMessage}`);
+        // Bloco de erro final: não expõe detalhes ao usuário.
+        // Envia uma mensagem TwiML genérica em caso de falha futura.
+        const twiml = new twilio.twiml.MessagingResponse();
+        twiml.message('Ocorreu um erro interno ao processar sua solicitação. Por favor, tente novamente mais tarde.');
 
-        return new NextResponse(debugResponse.toString(), {
-            status: 200, // Responde 200 para a Twilio não reenviar
+        return new NextResponse(twiml.toString(), {
+            status: 200, // Responde 200 para evitar que a Twilio reenvie a requisição.
             headers: { 'Content-Type': 'text/xml' },
         });
     }
