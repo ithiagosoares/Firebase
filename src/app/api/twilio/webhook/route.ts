@@ -5,7 +5,15 @@ import twilio from 'twilio';
 // Inicializa o cliente Twilio com as credenciais do ambiente
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = twilio(accountSid, authToken);
+// A inicialização do cliente pode falhar se as env vars não estiverem presentes
+let client: twilio.Twilio;
+try {
+    client = twilio(accountSid, authToken);
+} catch (error: any) {
+    console.error("### ERRO AO INICIALIZAR CLIENTE TWILIO ###", error);
+    // Se a inicialização falhar, não podemos continuar
+}
+
 
 // Função para parsear a requisição da Twilio
 async function parseTwilioRequest(req: NextRequest) {
@@ -20,41 +28,42 @@ async function parseTwilioRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
+        // Verifica se o cliente foi inicializado
+        if (!client) {
+            throw new Error('Cliente Twilio não inicializado. Verifique as variáveis de ambiente TWILIO_ACCOUNT_SID e TWILIO_AUTH_TOKEN.');
+        }
+
         const body = await parseTwilioRequest(req);
+        const from = body.From; 
+        const to = body.To;     
+        const message = body.Body;
 
-        // Extrai as informações da mensagem recebida
-        const from = body.From; // O número do paciente
-        const to = body.To;     // O nosso número da Twilio
-        const message = body.Body; // A mensagem do paciente
+        console.log(`--- Mensagem Recebida: ${message} de ${from} ---`);
 
-        console.log(`--- Mensagem Recebida da Twilio ---`);
-        console.log(`De: ${from}`);
-        console.log(`Mensagem: "${message}"`);
-        console.log(`---------------------------------`);
-
-        // --- LÓGICA DE RESPOSTA ---
-        // Aqui é onde a "inteligência" do seu app vai entrar no futuro.
-        // Por agora, vamos apenas confirmar o recebimento.
         const responseMessage = `Recebemos sua mensagem: "${message}". Esta é uma resposta automática.`;
 
         await client.messages.create({
             body: responseMessage,
-            from: to, // Envia A PARTIR do nosso número Twilio
-            to: from  // Envia PARA o número do paciente
+            from: to, 
+            to: from  
         });
 
-        console.log(`--- Resposta Enviada ---`);
-        console.log(`Para: ${from}`);
-        console.log(`Mensagem: "${responseMessage}"`);
-        console.log(`------------------------`);
+        console.log(`--- Resposta enviada para ${from} ---`);
         
-        // Responde à Twilio que tudo correu bem.
         return new NextResponse(null, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("### ERRO GRAVE no webhook da Twilio ###", error);
-        // Mesmo com erro, é bom responder 200 para a Twilio não ficar reenviando
-        // a mesma requisição e causando mais erros em loop.
-        return new NextResponse('Erro interno ao processar a mensagem.', { status: 200 });
+
+        // --- DEPURAÇÃO --- 
+        // Envia o erro real de volta via WhatsApp para podermos vê-lo.
+        const errorMessage = error.message || 'Um erro desconhecido ocorreu.';
+        const debugResponse = twilio.twiml.MessagingResponse();
+        debugResponse.message(`Erro no servidor: ${errorMessage}`);
+
+        return new NextResponse(debugResponse.toString(), {
+            status: 200, // Respondemos 200 para a Twilio não reenviar
+            headers: { 'Content-Type': 'text/xml' },
+        });
     }
 }
