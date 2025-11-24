@@ -2,18 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import twilio from 'twilio';
 
-// Inicializa o cliente Twilio com as credenciais do ambiente
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-// A inicialização do cliente pode falhar se as env vars não estiverem presentes
-let client: twilio.Twilio;
-try {
-    client = twilio(accountSid, authToken);
-} catch (error: any) {
-    console.error("### ERRO AO INICIALIZAR CLIENTE TWILIO ###", error);
-    // Se a inicialização falhar, não podemos continuar
-}
-
 
 // Função para parsear a requisição da Twilio
 async function parseTwilioRequest(req: NextRequest) {
@@ -28,10 +18,8 @@ async function parseTwilioRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        // Verifica se o cliente foi inicializado
-        if (!client) {
-            throw new Error('Cliente Twilio não inicializado. Verifique as variáveis de ambiente TWILIO_ACCOUNT_SID e TWILIO_AUTH_TOKEN.');
-        }
+        // Inicializa o cliente DENTRO do try, para capturar qualquer erro de inicialização
+        const client = twilio(accountSid, authToken);
 
         const body = await parseTwilioRequest(req);
         const from = body.From; 
@@ -55,14 +43,14 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error("### ERRO GRAVE no webhook da Twilio ###", error);
 
-        // --- DEPURAÇÃO --- 
-        // Envia o erro real de volta via WhatsApp para podermos vê-lo.
+        // --- CORREÇÃO DA DEPURAÇÃO ---
+        // Corrigido o erro de sintaxe adicionando a palavra 'new'.
         const errorMessage = error.message || 'Um erro desconhecido ocorreu.';
-        const debugResponse = twilio.twiml.MessagingResponse();
+        const debugResponse = new twilio.twiml.MessagingResponse();
         debugResponse.message(`Erro no servidor: ${errorMessage}`);
 
         return new NextResponse(debugResponse.toString(), {
-            status: 200, // Respondemos 200 para a Twilio não reenviar
+            status: 200, // Responde 200 para a Twilio não reenviar
             headers: { 'Content-Type': 'text/xml' },
         });
     }
