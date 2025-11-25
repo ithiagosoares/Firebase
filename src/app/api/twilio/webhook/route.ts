@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import twilio from 'twilio';
 import { db } from "../../../../../lib/firebaseAdmin";
@@ -27,7 +26,7 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
 }
 
 // ============================================================================================
-// ✅ INÍCIO DA CORREÇÃO DEFINITIVA (FORNECIDA PELO USUÁRIO)
+// ✅ INÍCIO DA CORREÇÃO DEFINITIVA
 // ============================================================================================
 
 function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0): Date {
@@ -43,38 +42,42 @@ function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0
     const month = Number(parts.find(p => p.type === "month")!.value);
     const day = Number(parts.find(p => p.type === "day")!.value);
 
-    // new Date() com componentes cria a data no fuso horário local do servidor.
-    // Como os componentes (ano, mês, dia) foram extraídos de SP, a data final
-    // representará o momento correto, que o Firestore converterá para UTC.
     return new Date(year, month - 1, day + addDays, hour, minute, 0, 0);
 }
 
+function manualParseBrazilianDate(input: string): Date | null {
+    let text = input.trim();
 
-function manualParseBrazilianDate(text: string): Date | null {
+    // Normalização: remove acentuação de "às", "ás", etc.
+    text = text
+        .replace(/às/gi, "as")
+        .replace(/á(s?)/gi, "a$1")
+        .replace(/\s+/g, " ");
+
     const now = new Date();
-    let addDay = /amanhã/i.test(text) ? 1 : 0;
+    let addDay = /amanh[ãa]/i.test(text) ? 1 : 0;
 
-    const h1 = text.match(/(\d{1,2})h/);
-    const h2 = text.match(/(\d{1,2}):(\d{2})/);
+    // Regex robustos para capturar horas
+    const h1 = text.match(/(\d{1,2})\s*(?:h|hs)\b/i);          // 14h, 14hs
+    const h2 = text.match(/(\d{1,2})\s*[:h]\s*(\d{2})/i);     // 14:00, 14h00
 
     let hour = -1;
     let minute = 0;
 
-    if (h1) {
-        hour = Number(h1[1]);
-    } else if (h2) {
+    if (h2) {
         hour = Number(h2[1]);
         minute = Number(h2[2]);
+    } else if (h1) {
+        hour = Number(h1[1]);
     } else {
-        return null; // Formato de hora inválido
+        return null; // Não entendeu a hora
     }
 
     if (hour < 0 || hour > 23) return null;
 
     const date = getBrazilDate(now, hour, minute, addDay);
 
-    // Se a data/hora calculada já passou no fuso de SP e o usuário NÃO disse "amanhã",
-    // automaticamente agendamos para o dia seguinte.
+    // Hora já passou hoje → agenda amanhã
     const formatter = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Sao_Paulo",
         year: 'numeric', month: 'numeric', day: 'numeric',
@@ -133,18 +136,25 @@ export async function POST(req: NextRequest) {
                     await sendResponse(client, from, to, "Não consegui entender a data/hora. Por favor, tente um formato como \"Amanhã às 15h\" ou \"Hoje às 22:00\".", conversationRef);
                     break;
                 }
-                
+
                 const scheduledMessage = conversationData?.scheduledMessage;
 
                 await db.collection('scheduled_messages').add({
                     recipient: from,
                     message: scheduledMessage,
-                    sendAt: scheduledDate, // Agora `scheduledDate` é um objeto Date com o valor UTC correto
+                    sendAt: scheduledDate,
                     status: 'scheduled',
                     createdAt: new Date()
                 });
 
-                await sendResponse(client, from, to, `Perfeito! Seu lembrete foi agendado para ${scheduledDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`, conversationRef);
+                await sendResponse(
+                    client,
+                    from,
+                    to,
+                    `Perfeito! Seu lembrete foi agendado para ${scheduledDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`,
+                    conversationRef
+                );
+
                 await conversationRef.set({ state: 'INITIAL', lastUpdated: new Date() }, { merge: true });
                 break;
 
