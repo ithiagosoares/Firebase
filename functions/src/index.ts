@@ -1,16 +1,15 @@
 
 /**
  * ==================================================================================================
- * MASTER FUNCTIONS INDEX - ARQUITETURA DE MICROSERVIÇOS (V19.4)
+ * MASTER FUNCTIONS INDEX - ARQUITETURA DE MICROSERVIÇOS (V19.5)
  *
- * DESCRIÇÃO DA ATUALIZAÇÃO (V19.4):
- * - MUDANÇA ESTRATÉGICA (Stripe): Abandonada a criação de sessão dinâmica via onCall.
- *   Adotado o uso de "Stripe Payment Links" para simplificar o fluxo de checkout.
- * - MELHORIA (Webhook): A função `stripeWebhook` foi refatorada. Agora, no evento
- *   `checkout.session.completed`, ela identifica o usuário buscando o `stripeId` no Firestore,
- *   em vez de depender de metadados. Isso garante a compatibilidade com os Payment Links.
+ * DESCRIÇÃO DA ATUALIZAÇÃO (V19.5):
+ * - NOVO RECURSO (Agendamento): Adicionada a função `sendScheduledMessages`.
+ *   Este Cron Job é acionado a cada minuto para buscar no Firestore (`scheduled_messages`)
+ *   as mensagens que devem ser enviadas, utiliza a API da Twilio para o disparo
+ *   e atualiza o status da mensagem para 'sent' ou 'failed'.
  *
- * @version 19.4.0
+ * @version 19.5.0
  * ==================================================================================================
  */
 
@@ -21,15 +20,12 @@ import {
   onCall,
   HttpsError,
   onRequest,
-  CallableRequest,
   Request,
 } from "firebase-functions/v2/https";
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { defineSecret, defineString } from "firebase-functions/params";
-import { Timestamp } from "firebase-admin/firestore";
-import axios from "axios";
 import Stripe from "stripe";
 import { Response } from "express";
+import twilio from 'twilio';
 
 // INICIALIZAÇÃO
 admin.initializeApp();
@@ -38,11 +34,66 @@ const db = admin.firestore();
 // PARÂMETROS E SECRETS (V2)
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
-const whatsappApiUrl = defineString("WHATSAPP_API_URL");
+const whatsappApiUrl = defineString("WHATSAPP_API_URL"); // Embora definido, não está em uso ativo nesta versão.
+const twilioAccountSid = defineSecret("TWILIO_ACCOUNT_SID");
+const twilioAuthToken = defineSecret("TWILIO_AUTH_TOKEN");
+
 
 const getStripeClient = (): Stripe => {
   return new Stripe(stripeSecretKey.value(), { typescript: true });
 };
+
+// ==================================================================================================
+// CRON JOB (V2) - ENVIADOR DE MENSAGENS AGENDADAS
+// Dispara a cada 1 minuto.
+// ==================================================================================================
+export const sendScheduledMessages = onSchedule({ 
+    schedule: "every 1 minutes",
+    region: "southamerica-east1",
+    secrets: [twilioAccountSid, twilioAuthToken],
+    timeZone: "America/Sao_Paulo", // Garante que a execução seja consistente com o fuso horário de SP.
+}, async (event) => {
+    
+    functions.logger.info("Iniciando verificação de mensagens agendadas...", { timestamp: event.timestamp });
+    const now = admin.firestore.Timestamp.now();
+
+    const query = db.collection('scheduled_messages')
+                    .where('status', '==', 'scheduled')
+                    .where('sendAt', '<=', now);
+
+    const messagesToSend = await query.get();
+
+    if (messagesToSend.empty) {
+        functions.logger.info("Nenhuma mensagem agendada para enviar neste ciclo.");
+        return;
+    }
+
+    functions.logger.info(`Encontradas ${messagesToSend.size} mensagens para enviar.`);
+
+    const client = twilio(twilioAccountSid.value(), twilioAuthToken.value());
+    const whatsappSendingNumber = "whatsapp:+14155238886"; // Número da Twilio (Sandbox)
+
+    const promises = messagesToSend.docs.map(async (doc) => {
+        const message = doc.data();
+        try {
+            functions.logger.info(`Enviando mensagem ${doc.id} para ${message.recipient}...`);
+            await client.messages.create({
+                from: whatsappSendingNumber,
+                to: message.recipient,
+                body: message.message,
+            });
+            await doc.ref.update({ status: 'sent', sentAt: admin.firestore.FieldValue.serverTimestamp() });
+            functions.logger.info(`Mensagem ${doc.id} enviada com sucesso.`);
+        } catch (error) {
+            functions.logger.error(`Falha ao enviar mensagem ${doc.id} para ${message.recipient}:`, error);
+            await doc.ref.update({ status: 'failed', error: (error as Error).message });
+        }
+    });
+
+    await Promise.all(promises);
+    functions.logger.info("Ciclo de envio de mensagens concluído.");
+});
+
 
 // ==================================================================================================
 // GATILHO DE CRIAÇÃO DE CLIENTE NA STRIPE (SDK V1)
@@ -138,7 +189,6 @@ export const stripeWebhook = onRequest({ region: "southamerica-east1", secrets: 
 });
 
 // FUNÇÕES OBSOLETAS (MANTIDAS EM BRANCO PARA EVITAR DEPLOYS COM ERRO)
-// A LÓGICA DE CHECKOUT AGORA É GERENCIADA POR STRIPE PAYMENT LINKS
 export const createCheckoutSession = onCall(() => { 
     throw new HttpsError("aborted", "Esta função foi descontinuada. Use os Stripe Payment Links.");
 });
@@ -148,6 +198,7 @@ export const createStripePortalSession = onCall(() => {
 
 /*
  * As funções abaixo (onWorkflowUpdate, onPatientAppointmentUpdate, etc.) não foram alteradas
- * e são omitidas aqui para manter a clareza da alteração relacionada à Stripe.
+ * e são omitidas aqui para manter a clareza da alteração.
  * Elas continuam existindo no arquivo original.
  */
+
