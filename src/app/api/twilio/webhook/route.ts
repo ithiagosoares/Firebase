@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import twilio from 'twilio';
 import { db } from "../../../../../lib/firebaseAdmin";
+import { pt } from 'chrono-node'; // Importando o tradutor de datas para Português
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -17,16 +18,10 @@ async function parseTwilioRequest(req: NextRequest) {
     return body;
 }
 
-// Salva uma mensagem de entrada ou saída no histórico da conversa
 async function logMessage(conversationRef: FirebaseFirestore.DocumentReference, content: string, direction: 'inbound' | 'outbound') {
-    await conversationRef.collection('messages').add({
-        content,
-        direction,
-        timestamp: new Date(),
-    });
+    await conversationRef.collection('messages').add({ content, direction, timestamp: new Date() });
 }
 
-// Envia uma resposta via Twilio e a salva no histórico
 async function sendResponse(client: twilio.Twilio, to: string, from: string, message: string, conversationRef: FirebaseFirestore.DocumentReference) {
     await client.messages.create({ body: message, from, to });
     await logMessage(conversationRef, message, 'outbound');
@@ -46,7 +41,8 @@ export async function POST(req: NextRequest) {
 
         await logMessage(conversationRef, message, 'inbound');
 
-        let currentState = conversationDoc.exists ? conversationDoc.data()?.state : 'INITIAL';
+        const conversationData = conversationDoc.data();
+        let currentState = conversationDoc.exists ? conversationData?.state : 'INITIAL';
 
         switch (currentState) {
             case 'INITIAL':
@@ -62,8 +58,25 @@ export async function POST(req: NextRequest) {
 
             case 'AWAITING_SCHEDULE_TIME':
                 const scheduleTimeInput = message;
-                // POR FAZER: Processar a data e criar o agendamento final.
-                await sendResponse(client, from, to, `Perfeito! Seu lembrete foi agendado. (Lógica de agendamento pendente).`, conversationRef);
+                const scheduledDate = pt.parseDate(scheduleTimeInput, new Date(), { forwardDate: true });
+
+                if (!scheduledDate) {
+                    await sendResponse(client, from, to, "Não consegui entender essa data. Por favor, tente um formato como \"Amanhã às 15h\" ou \"27/11/2025 15:00\".", conversationRef);
+                    break;
+                }
+
+                const scheduledMessage = conversationData?.scheduledMessage;
+
+                // Criando o agendamento na coleção que o seu Cron Job irá ler
+                await db.collection('scheduled_messages').add({
+                    recipient: from,       // Número do WhatsApp do usuário
+                    message: scheduledMessage, // A mensagem que coletamos no passo anterior
+                    sendAt: scheduledDate,   // A data/hora exata que o chrono-node traduziu
+                    status: 'scheduled',      // Status inicial do agendamento
+                    createdAt: new Date()
+                });
+
+                await sendResponse(client, from, to, `Perfeito! Seu lembrete foi agendado para ${scheduledDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`, conversationRef);
                 await conversationRef.set({ state: 'INITIAL', lastUpdated: new Date() }, { merge: true }); // Reinicia o fluxo
                 break;
 
