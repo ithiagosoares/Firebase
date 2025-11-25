@@ -138,6 +138,14 @@ export async function POST(req: NextRequest) {
                 
                 const scheduledMessage = conversationData?.scheduledMessage;
 
+                // 📌 LOG DE DIAGNÓSTICO SUGERIDO PELA IA EXTERNA
+                console.log("AGENDADO ANTES DE SALVAR:", {
+                    original: scheduledDate,
+                    iso: scheduledDate.toISOString(),
+                    localeSP: scheduledDate.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+                    offset: scheduledDate.getTimezoneOffset()
+                });
+
                 await db.collection('scheduled_messages').add({
                     recipient: from,
                     message: scheduledMessage,
