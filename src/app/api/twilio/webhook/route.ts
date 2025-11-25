@@ -6,8 +6,8 @@ import { db } from "../../../../../lib/firebaseAdmin";
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-// --- Funções Auxiliares ---
-async function parseTwilioRequest(req: NextRequest) {
+// --- Funções Auxiliares (Sem alteração) ---
+asynce function parseTwilioRequest(req: NextRequest) {
     const text = await req.text();
     const params = new URLSearchParams(text);
     const body: { [key: string]: string } = {};
@@ -27,75 +27,69 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
 }
 
 // ============================================================================================
-// ✅ INÍCIO DA CORREÇÃO DEFINITIVA (BASEADA NA ANÁLISE EXTERNA)
+// ✅ INÍCIO DA CORREÇÃO DEFINITIVA (FORNECIDA PELO USUÁRIO)
 // ============================================================================================
 
-// Esta função cria um objeto Date que representa o momento *exato* em São Paulo,
-// independentemente do fuso horário do servidor onde o código está rodando.
-// Ela faz isso construindo uma string ISO 8601 com o offset explícito (-03:00).
-function nowInSaoPaulo() {
-    const formatter = new Intl.DateTimeFormat("en-US", {
+function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0): Date {
+    const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Sao_Paulo",
         year: "numeric",
         month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false // Garante o formato 24h
+        day: "2-digit"
     });
 
-    const parts = formatter.formatToParts(new Date());
-    const get = (type: string) => parts.find(p => p.type === type)!.value;
+    const parts = fmt.formatToParts(baseDate);
+    const year = Number(parts.find(p => p.type === "year")!.value);
+    const month = Number(parts.find(p => p.type === "month")!.value);
+    const day = Number(parts.find(p => p.type === "day")!.value);
 
-    // Constrói a data com offset explícito para remover qualquer ambiguidade.
-    // O JavaScript vai interpretar isso corretamente para o UTC interno do objeto Date.
-    const dateString = `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}-03:00`;
-    
-    return new Date(dateString);
+    // new Date() com componentes cria a data no fuso horário local do servidor.
+    // Como os componentes (ano, mês, dia) foram extraídos de SP, a data final
+    // representará o momento correto, que o Firestore converterá para UTC.
+    return new Date(year, month - 1, day + addDays, hour, minute, 0, 0);
 }
 
 
-function manualParseBrazilianDate(input: string): Date | null {
-    // Começamos com a data/hora *real* de São Paulo
-    let scheduledDate = nowInSaoPaulo();
+function manualParseBrazilianDate(text: string): Date | null {
+    const now = new Date();
+    let addDay = /amanhã/i.test(text) ? 1 : 0;
 
-    // --- 1. Verifica se o agendamento é para "Amanhã" ---
-    const isTomorrow = /amanhã/i.test(input);
-    if (isTomorrow) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
-    }
+    const h1 = text.match(/(\d{1,2})h/);
+    const h2 = text.match(/(\d{1,2}):(\d{2})/);
 
-    // --- 2. Extrai a hora e minuto da mensagem ---
     let hour = -1;
     let minute = 0;
 
-    const hMatch = input.match(/(\d{1,2})h/i);
-    const colonMatch = input.match(/(\d{1,2}):(\d{2})/);
-
-    if (hMatch) {
-        hour = parseInt(hMatch[1], 10);
-    } else if (colonMatch) {
-        hour = parseInt(colonMatch[1], 10);
-        minute = parseInt(colonMatch[2], 10);
+    if (h1) {
+        hour = Number(h1[1]);
+    } else if (h2) {
+        hour = Number(h2[1]);
+        minute = Number(h2[2]);
     } else {
-        // Se não encontrar um padrão de hora, a entrada é inválida
-        return null;
+        return null; // Formato de hora inválido
     }
 
     if (hour < 0 || hour > 23) return null;
 
-    // Define a hora e minuto na data de agendamento, zerando segundos.
-    scheduledDate.setHours(hour, minute, 0, 0);
+    const date = getBrazilDate(now, hour, minute, addDay);
 
-    // --- 3. Lógica de segurança: Se o horário resultante já passou HOJE e o usuário NÃO disse "amanhã",
-    // assume-se que ele quis dizer o dia seguinte.
-    const nowAfterSettingHour = nowInSaoPaulo();
-    if (scheduledDate < nowAfterSettingHour && !isTomorrow) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
+    // Se a data/hora calculada já passou no fuso de SP e o usuário NÃO disse "amanhã",
+    // automaticamente agendamos para o dia seguinte.
+    const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Sao_Paulo",
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const get = (type: any) => parts.find(p => p.type === type)!.value;
+    const nowInSaoPaulo = new Date(`${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`);
+
+    if (date < nowInSaoPaulo && addDay === 0) {
+        return getBrazilDate(now, hour, minute, 1);
     }
 
-    return scheduledDate;
+    return date;
 }
 
 // ============================================================================================
@@ -128,7 +122,7 @@ export async function POST(req: NextRequest) {
 
             case 'AWAITING_MESSAGE_CONTENT':
                 const messageContent = message;
-                await sendResponse(client, from, to, `Entendido. E para quando devo agendar o envio desta mensagem?\n(Ex: "Amanhã às 15h", "27/11/2025 15:00")`, conversationRef);
+                await sendResponse(client, from, to, `Entendido. E para quando devo agendar o envio desta mensagem?\n(Ex: "Amanhã às 15h", "Hoje às 22:00")`, conversationRef);
                 await conversationRef.set({ state: 'AWAITING_SCHEDULE_TIME', scheduledMessage: messageContent, lastUpdated: new Date() }, { merge: true });
                 break;
 
