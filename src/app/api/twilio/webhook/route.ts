@@ -27,45 +27,46 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
 }
 
 // ============================================================================================
-// ✅ INÍCIO DO CÓDIGO CORRIGIDO PELA IA EXTERNA
+// ✅ INÍCIO DA CORREÇÃO DEFINITIVA (BASEADA NA ANÁLISE EXTERNA)
 // ============================================================================================
-function getNowInTimezone(tz: string) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
+
+// Esta função cria um objeto Date que representa o momento *exato* em São Paulo,
+// independentemente do fuso horário do servidor onde o código está rodando.
+// Ela faz isso construindo uma string ISO 8601 com o offset explícito (-03:00).
+function nowInSaoPaulo() {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Sao_Paulo",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        hour12: false
-    }).formatToParts(new Date());
+        hour12: false // Garante o formato 24h
+    });
 
-    const get = (type: string) => parseInt(parts.find(p => p.type === type)!.value, 10);
+    const parts = formatter.formatToParts(new Date());
+    const get = (type: string) => parts.find(p => p.type === type)!.value;
 
-    return new Date(
-        get("year"),
-        get("month") - 1,
-        get("day"),
-        get("hour"),
-        get("minute"),
-        get("second")
-    );
+    // Constrói a data com offset explícito para remover qualquer ambiguidade.
+    // O JavaScript vai interpretar isso corretamente para o UTC interno do objeto Date.
+    const dateString = `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}-03:00`;
+    
+    return new Date(dateString);
 }
 
+
 function manualParseBrazilianDate(input: string): Date | null {
-    const tz = "America/Sao_Paulo";
-    const nowInSP = getNowInTimezone(tz);
+    // Começamos com a data/hora *real* de São Paulo
+    let scheduledDate = nowInSaoPaulo();
 
-    let scheduledDate = new Date(nowInSP);
-
-    // --- 1. Amanhã ---
+    // --- 1. Verifica se o agendamento é para "Amanhã" ---
     const isTomorrow = /amanhã/i.test(input);
     if (isTomorrow) {
         scheduledDate.setDate(scheduledDate.getDate() + 1);
     }
 
-    // --- 2. Extrair hora ---
+    // --- 2. Extrai a hora e minuto da mensagem ---
     let hour = -1;
     let minute = 0;
 
@@ -78,24 +79,27 @@ function manualParseBrazilianDate(input: string): Date | null {
         hour = parseInt(colonMatch[1], 10);
         minute = parseInt(colonMatch[2], 10);
     } else {
+        // Se não encontrar um padrão de hora, a entrada é inválida
         return null;
     }
 
     if (hour < 0 || hour > 23) return null;
 
+    // Define a hora e minuto na data de agendamento, zerando segundos.
     scheduledDate.setHours(hour, minute, 0, 0);
 
-    // --- 3. Se ficou no passado e não tem "amanhã", movemos p/ amanhã ---
-    const nowAfter = getNowInTimezone(tz);
-
-    if (scheduledDate < nowAfter && !isTomorrow) {
+    // --- 3. Lógica de segurança: Se o horário resultante já passou HOJE e o usuário NÃO disse "amanhã",
+    // assume-se que ele quis dizer o dia seguinte.
+    const nowAfterSettingHour = nowInSaoPaulo();
+    if (scheduledDate < nowAfterSettingHour && !isTomorrow) {
         scheduledDate.setDate(scheduledDate.getDate() + 1);
     }
 
     return scheduledDate;
 }
+
 // ============================================================================================
-// ✅ FIM DO CÓDIGO CORRIGIDO
+// ✅ FIM DA CORREÇÃO
 // ============================================================================================
 
 
@@ -138,18 +142,10 @@ export async function POST(req: NextRequest) {
                 
                 const scheduledMessage = conversationData?.scheduledMessage;
 
-                // 📌 LOG DE DIAGNÓSTICO SUGERIDO PELA IA EXTERNA
-                console.log("AGENDADO ANTES DE SALVAR:", {
-                    original: scheduledDate,
-                    iso: scheduledDate.toISOString(),
-                    localeSP: scheduledDate.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
-                    offset: scheduledDate.getTimezoneOffset()
-                });
-
                 await db.collection('scheduled_messages').add({
                     recipient: from,
                     message: scheduledMessage,
-                    sendAt: scheduledDate,
+                    sendAt: scheduledDate, // Agora `scheduledDate` é um objeto Date com o valor UTC correto
                     status: 'scheduled',
                     createdAt: new Date()
                 });
