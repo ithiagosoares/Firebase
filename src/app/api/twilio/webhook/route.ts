@@ -26,52 +26,80 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
     await logMessage(conversationRef, message, 'outbound');
 }
 
-// --- ANALISADOR DE DATA MANUAL (SUBSTITUI O CHRONO-NODE) ---
-function manualParseBrazilianDate(input: string): Date | null {
-    const nowInSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-    let scheduledDate = new Date(nowInSP);
+// ============================================================================================
+// ✅ INÍCIO DO CÓDIGO CORRIGIDO PELA IA EXTERNA
+// ============================================================================================
+function getNowInTimezone(tz: string) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(new Date());
 
-    // 1. Verifica por "Amanhã"
-    if (input.match(/amanhã/i)) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
-    }
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)!.value, 10);
 
-    // 2. Extrai a hora (ex: "14h", "14:00")
-    let hour = -1;
-    let minute = 0;
-    
-    const timeRegexH = /(\d{1,2})h/i;
-    const timeMatchH = input.match(timeRegexH);
-
-    const timeRegexColon = /(\d{1,2}):(\d{2})/;
-    const timeMatchColon = input.match(timeRegexColon);
-
-    if (timeMatchH) {
-        hour = parseInt(timeMatchH[1], 10);
-    } else if (timeMatchColon) {
-        hour = parseInt(timeMatchColon[1], 10);
-        minute = parseInt(timeMatchColon[2], 10);
-    }
-
-    // 3. Se a hora foi encontrada, define no objeto de data. Senão, a análise falha.
-    if (hour !== -1 && hour >= 0 && hour < 24) {
-        scheduledDate.setHours(hour, minute, 0, 0); // Define H, M, S, MS
-    } else {
-        return null; // Indica falha ao analisar a hora
-    }
-
-    // 4. Se a data calculada for no passado (e "amanhã" não foi dito), avança para o dia seguinte.
-    const finalNowInSP = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-    if (scheduledDate < finalNowInSP && !input.match(/amanhã/i)) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
-    }
-    
-    return scheduledDate;
+    return new Date(
+        get("year"),
+        get("month") - 1,
+        get("day"),
+        get("hour"),
+        get("minute"),
+        get("second")
+    );
 }
 
+function manualParseBrazilianDate(input: string): Date | null {
+    const tz = "America/Sao_Paulo";
+    const nowInSP = getNowInTimezone(tz);
 
-// ------------------------
+    let scheduledDate = new Date(nowInSP);
 
+    // --- 1. Amanhã ---
+    const isTomorrow = /amanhã/i.test(input);
+    if (isTomorrow) {
+        scheduledDate.setDate(scheduledDate.getDate() + 1);
+    }
+
+    // --- 2. Extrair hora ---
+    let hour = -1;
+    let minute = 0;
+
+    const hMatch = input.match(/(\d{1,2})h/i);
+    const colonMatch = input.match(/(\d{1,2}):(\d{2})/);
+
+    if (hMatch) {
+        hour = parseInt(hMatch[1], 10);
+    } else if (colonMatch) {
+        hour = parseInt(colonMatch[1], 10);
+        minute = parseInt(colonMatch[2], 10);
+    } else {
+        return null;
+    }
+
+    if (hour < 0 || hour > 23) return null;
+
+    scheduledDate.setHours(hour, minute, 0, 0);
+
+    // --- 3. Se ficou no passado e não tem "amanhã", movemos p/ amanhã ---
+    const nowAfter = getNowInTimezone(tz);
+
+    if (scheduledDate < nowAfter && !isTomorrow) {
+        scheduledDate.setDate(scheduledDate.getDate() + 1);
+    }
+
+    return scheduledDate;
+}
+// ============================================================================================
+// ✅ FIM DO CÓDIGO CORRIGIDO
+// ============================================================================================
+
+
+// Rota principal
 export async function POST(req: NextRequest) {
     try {
         const client = twilio(accountSid, authToken);
@@ -101,7 +129,6 @@ export async function POST(req: NextRequest) {
                 break;
 
             case 'AWAITING_SCHEDULE_TIME':
-                // LÓGICA DE DATA TOTALMENTE MANUAL. CHRONO-NODE REMOVIDO.
                 const scheduledDate = manualParseBrazilianDate(message);
 
                 if (!scheduledDate) {
@@ -124,7 +151,7 @@ export async function POST(req: NextRequest) {
                 break;
 
             default:
-                await sendResponse(client, from, to, "Ocorreu um erro no nosso fluxo de conversa. Reiniciando... Qual é a mensagem que você deseja agendar?", conversationRef);
+                await sendResponse(client, from, to, "Ocorreu um erro no nosso fluxo de conversa. Reiniciando...", conversationRef);
                 await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT' });
                 break;
         }
