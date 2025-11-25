@@ -1,11 +1,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import twilio from 'twilio';
-import { db } from "../../../../../lib/firebaseAdmin"; // Importando nossa configuração do Firestore
+import { db } from "../../../../../lib/firebaseAdmin";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 
+// --- Funções Auxiliares ---
 async function parseTwilioRequest(req: NextRequest) {
     const text = await req.text();
     const params = new URLSearchParams(text);
@@ -16,50 +17,68 @@ async function parseTwilioRequest(req: NextRequest) {
     return body;
 }
 
+// Salva uma mensagem de entrada ou saída no histórico da conversa
+async function logMessage(conversationRef: FirebaseFirestore.DocumentReference, content: string, direction: 'inbound' | 'outbound') {
+    await conversationRef.collection('messages').add({
+        content,
+        direction,
+        timestamp: new Date(),
+    });
+}
+
+// Envia uma resposta via Twilio e a salva no histórico
+async function sendResponse(client: twilio.Twilio, to: string, from: string, message: string, conversationRef: FirebaseFirestore.DocumentReference) {
+    await client.messages.create({ body: message, from, to });
+    await logMessage(conversationRef, message, 'outbound');
+}
+// ------------------------
+
 export async function POST(req: NextRequest) {
     try {
         const client = twilio(accountSid, authToken);
         const body = await parseTwilioRequest(req);
-        const from = body.From; 
-        const to = body.To;     
+        const from = body.From;
+        const to = body.To;
         const message = body.Body;
 
-        // --- NOVO: SALVANDO A MENSAGEM NO BANCO DE DADOS ---
-        // O número de telefone (From) será o ID do nosso documento de conversa.
         const conversationRef = db.collection('conversations').doc(from);
-        await conversationRef.collection('messages').add({
-            content: message,
-            direction: 'inbound',
-            timestamp: new Date(),
-        });
-        // -----------------------------------------------------
+        const conversationDoc = await conversationRef.get();
 
-        const responseMessage = `Recebemos sua mensagem: "${message}". Esta é uma resposta automática. (DB test)`;
+        await logMessage(conversationRef, message, 'inbound');
 
-        await client.messages.create({
-            body: responseMessage,
-            from: to, 
-            to: from  
-        });
+        let currentState = conversationDoc.exists ? conversationDoc.data()?.state : 'INITIAL';
 
-        // Salvando a resposta no banco de dados
-        await conversationRef.collection('messages').add({
-            content: responseMessage,
-            direction: 'outbound',
-            timestamp: new Date(),
-        });
-        
+        switch (currentState) {
+            case 'INITIAL':
+                await sendResponse(client, from, to, "Olá! Sou seu assistente de agendamentos. Qual é a mensagem que você deseja agendar?", conversationRef);
+                await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT', lastUpdated: new Date() });
+                break;
+
+            case 'AWAITING_MESSAGE_CONTENT':
+                const messageContent = message;
+                await sendResponse(client, from, to, `Entendido. E para quando devo agendar o envio desta mensagem?\n(Ex: "Amanhã às 15h", "27/11/2025 15:00")`, conversationRef);
+                await conversationRef.set({ state: 'AWAITING_SCHEDULE_TIME', scheduledMessage: messageContent, lastUpdated: new Date() }, { merge: true });
+                break;
+
+            case 'AWAITING_SCHEDULE_TIME':
+                const scheduleTimeInput = message;
+                // POR FAZER: Processar a data e criar o agendamento final.
+                await sendResponse(client, from, to, `Perfeito! Seu lembrete foi agendado. (Lógica de agendamento pendente).`, conversationRef);
+                await conversationRef.set({ state: 'INITIAL', lastUpdated: new Date() }, { merge: true }); // Reinicia o fluxo
+                break;
+
+            default:
+                await sendResponse(client, from, to, "Ocorreu um erro no nosso fluxo de conversa. Reiniciando... Qual é a mensagem que você deseja agendar?", conversationRef);
+                await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT' });
+                break;
+        }
+
         return new NextResponse(null, { status: 200 });
 
     } catch (error: any) {
         console.error("### ERRO GRAVE no webhook da Twilio ###", error);
-
         const twiml = new twilio.twiml.MessagingResponse();
-        twiml.message('Ocorreu um erro interno ao processar sua solicitação.');
-
-        return new NextResponse(twiml.toString(), {
-            status: 200,
-            headers: { 'Content-Type': 'text/xml' },
-        });
+        twiml.message('Ocorreu um erro interno. Nossa equipe já foi notificada.');
+        return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
     }
 }
