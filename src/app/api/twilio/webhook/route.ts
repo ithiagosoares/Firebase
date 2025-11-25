@@ -7,7 +7,7 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 
 // --- Funções Auxiliares (Sem alteração) ---
-asynce function parseTwilioRequest(req: NextRequest) {
+async function parseTwilioRequest(req: NextRequest) {
     const text = await req.text();
     const params = new URLSearchParams(text);
     const body: { [key: string]: string } = {};
