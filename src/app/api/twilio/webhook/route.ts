@@ -5,7 +5,9 @@ import { db } from "../../../../../lib/firebaseAdmin";
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-// --- Funções Auxiliares (Sem alteração) ---
+// ---------------------------------------------------------------------------
+// PARSE DA REQUISIÇÃO TWILIO
+// ---------------------------------------------------------------------------
 async function parseTwilioRequest(req: NextRequest) {
     const text = await req.text();
     const params = new URLSearchParams(text);
@@ -17,7 +19,11 @@ async function parseTwilioRequest(req: NextRequest) {
 }
 
 async function logMessage(conversationRef: FirebaseFirestore.DocumentReference, content: string, direction: 'inbound' | 'outbound') {
-    await conversationRef.collection('messages').add({ content, direction, timestamp: new Date() });
+    await conversationRef.collection('messages').add({
+        content,
+        direction,
+        timestamp: new Date()
+    });
 }
 
 async function sendResponse(client: twilio.Twilio, to: string, from: string, message: string, conversationRef: FirebaseFirestore.DocumentReference) {
@@ -25,10 +31,13 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
     await logMessage(conversationRef, message, 'outbound');
 }
 
+
+
 // ============================================================================================
-// ✅ INÍCIO DA CORREÇÃO DEFINITIVA
+// ⏰ CORREÇÃO DEFINITIVA DO FUSO HORÁRIO — VERSÃO CONSOLIDADA
 // ============================================================================================
 
+// 🔥 Cria Data EXACTA no fuso horário de São Paulo, sem conversão automática do Node
 function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0): Date {
     const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Sao_Paulo",
@@ -38,28 +47,38 @@ function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0
     });
 
     const parts = fmt.formatToParts(baseDate);
-    const year = Number(parts.find(p => p.type === "year")!.value);
-    const month = Number(parts.find(p => p.type === "month")!.value);
-    const day = Number(parts.find(p => p.type === "day")!.value);
+    const year = parts.find(p => p.type === "year")!.value;
+    const month = parts.find(p => p.type === "month")!.value;
+    const day = parts.find(p => p.type === "day")!.value;
 
-    return new Date(year, month - 1, day + addDays, hour, minute, 0, 0);
+    // 👇 CRIA UMA STRING ISO FIXA NO FUSO -03:00
+    const iso = `${year}-${month}-${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`;
+    return new Date(iso);
 }
 
+
+// ============================================================================================
+// 🧠 PARSER DE DATA EM PORTUGUÊS (ROBUSTO)
+// ============================================================================================
 function manualParseBrazilianDate(input: string): Date | null {
     let text = input.trim();
 
-    // Normalização: remove acentuação de "às", "ás", etc.
+    // Normalização: remove acentos e múltiplos espaços
     text = text
-        .replace(/às/gi, "as")
-        .replace(/á(s?)/gi, "a$1")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/\s+/g, " ");
 
     const now = new Date();
-    let addDay = /amanh[ãa]/i.test(text) ? 1 : 0;
 
-    // Regex robustos para capturar horas
-    const h1 = text.match(/(\d{1,2})\s*(?:h|hs)\b/i);          // 14h, 14hs
-    const h2 = text.match(/(\d{1,2})\s*[:h]\s*(\d{2})/i);     // 14:00, 14h00
+    const isTomorrow = /\bamanha\b/i.test(text);
+    const isToday = /\bhoje\b/i.test(text);
+
+    let addDay = isTomorrow ? 1 : 0;
+
+    // Capturas possíveis:
+    // 14h, 14hs, 14h00, 14:00, 9h, 9:30, etc.
+    const h2 = text.match(/(\d{1,2})[:h](\d{2})/i);
+    const h1 = text.match(/(\d{1,2})\s*(?:h|hs)\b/i);
 
     let hour = -1;
     let minute = 0;
@@ -70,74 +89,110 @@ function manualParseBrazilianDate(input: string): Date | null {
     } else if (h1) {
         hour = Number(h1[1]);
     } else {
-        return null; // Não entendeu a hora
+        return null; // Hora inválida
     }
 
     if (hour < 0 || hour > 23) return null;
+    if (minute < 0 || minute > 59) return null;
 
     const date = getBrazilDate(now, hour, minute, addDay);
 
-    // Hora já passou hoje → agenda amanhã
-    const formatter = new Intl.DateTimeFormat("en-US", {
+    // Verificar se já passou hoje
+    const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Sao_Paulo",
         year: 'numeric', month: 'numeric', day: 'numeric',
         hour: 'numeric', minute: 'numeric', second: 'numeric',
         hour12: false
     });
-    const parts = formatter.formatToParts(now);
-    const get = (type: any) => parts.find(p => p.type === type)!.value;
-    const nowInSaoPaulo = new Date(`${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`);
+    const parts = fmt.formatToParts(now);
+    const curr = new Date(
+        `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}-${parts.find(p => p.type === 'day')!.value}T${parts.find(p => p.type === 'hour')!.value}:${parts.find(p => p.type === 'minute')!.value}:${parts.find(p => p.type === 'second')!.value}-03:00`
+    );
 
-    if (date < nowInSaoPaulo && addDay === 0) {
+    if (date < curr && !isTomorrow) {
         return getBrazilDate(now, hour, minute, 1);
     }
 
     return date;
 }
 
-// ============================================================================================
-// ✅ FIM DA CORREÇÃO
-// ============================================================================================
 
 
-// Rota principal
+// ============================================================================================
+// 🚀 ROTA PRINCIPAL
+// ============================================================================================
 export async function POST(req: NextRequest) {
     try {
         const client = twilio(accountSid, authToken);
         const body = await parseTwilioRequest(req);
         const from = body.From;
         const to = body.To;
-        const message = body.Body;
+        const message = body.Body?.trim();
+
+        if (!from || !to || !message) {
+            console.error("Requisição inválida recebida da Twilio:", body);
+            return new NextResponse("Invalid request", { status: 400 });
+        }
 
         const conversationRef = db.collection('conversations').doc(from);
         const conversationDoc = await conversationRef.get();
 
         await logMessage(conversationRef, message, 'inbound');
 
-        const conversationData = conversationDoc.data();
-        let currentState = conversationDoc.exists ? conversationData?.state : 'INITIAL';
+        const conversationData = conversationDoc.data() || {};
+        let currentState = conversationData.state || 'INITIAL';
 
         switch (currentState) {
+
             case 'INITIAL':
-                await sendResponse(client, from, to, "Olá! Sou seu assistente de agendamentos. Qual é a mensagem que você deseja agendar?", conversationRef);
-                await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT', lastUpdated: new Date() });
+                await sendResponse(
+                    client, from, to,
+                    "Olá! Sou seu assistente de agendamentos. Qual é a mensagem que você deseja agendar?",
+                    conversationRef
+                );
+                await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT', lastUpdated: new Date() }, { merge: true });
                 break;
 
             case 'AWAITING_MESSAGE_CONTENT':
-                const messageContent = message;
-                await sendResponse(client, from, to, `Entendido. E para quando devo agendar o envio desta mensagem?\n(Ex: "Amanhã às 15h", "Hoje às 22:00")`, conversationRef);
-                await conversationRef.set({ state: 'AWAITING_SCHEDULE_TIME', scheduledMessage: messageContent, lastUpdated: new Date() }, { merge: true });
+                await sendResponse(
+                    client, from, to,
+                    `Entendido. E para quando devo agendar o envio desta mensagem?\n(Ex: "Amanhã às 15h", "Hoje às 22:00")`,
+                    conversationRef
+                );
+
+                await conversationRef.set({
+                    state: 'AWAITING_SCHEDULE_TIME',
+                    scheduledMessage: message,
+                    lastUpdated: new Date()
+                }, { merge: true });
+
                 break;
 
-            case 'AWAITING_SCHEDULE_TIME':
+
+            case 'AWAITING_SCHEDULE_TIME': {
                 const scheduledDate = manualParseBrazilianDate(message);
 
                 if (!scheduledDate) {
-                    await sendResponse(client, from, to, "Não consegui entender a data/hora. Por favor, tente um formato como \"Amanhã às 15h\" ou \"Hoje às 22:00\".", conversationRef);
+                    await sendResponse(
+                        client, from, to,
+                        "Não consegui entender a data/hora. Tente algo como: \"Amanhã às 15h\" ou \"Hoje às 22:00\".",
+                        conversationRef
+                    );
                     break;
                 }
 
-                const scheduledMessage = conversationData?.scheduledMessage;
+                const scheduledMessage = conversationData.scheduledMessage;
+
+                if (!scheduledMessage) {
+                    // fluxo corrompido
+                    await conversationRef.set({ state: 'INITIAL' }, { merge: true });
+                    await sendResponse(
+                        client, from, to,
+                        "Ocorreu um erro no fluxo. Vamos começar de novo. Qual mensagem deseja agendar?",
+                        conversationRef
+                    );
+                    break;
+                }
 
                 await db.collection('scheduled_messages').add({
                     recipient: from,
@@ -155,21 +210,31 @@ export async function POST(req: NextRequest) {
                     conversationRef
                 );
 
-                await conversationRef.set({ state: 'INITIAL', lastUpdated: new Date() }, { merge: true });
+                await conversationRef.set({
+                    state: 'INITIAL',
+                    scheduledMessage: null,
+                    lastUpdated: new Date()
+                }, { merge: true });
+
                 break;
+            }
 
             default:
-                await sendResponse(client, from, to, "Ocorreu um erro no nosso fluxo de conversa. Reiniciando...", conversationRef);
-                await conversationRef.set({ state: 'AWAITING_MESSAGE_CONTENT' });
-                break;
+                await conversationRef.set({ state: 'INITIAL' }, { merge: true });
+                await sendResponse(client, from, to, "Fluxo reiniciado. Qual mensagem deseja agendar?", conversationRef);
         }
 
         return new NextResponse(null, { status: 200 });
 
     } catch (error: any) {
         console.error("### ERRO GRAVE no webhook da Twilio ###", error);
+
         const twiml = new twilio.twiml.MessagingResponse();
-        twiml.message('Ocorreu um erro interno. Nossa equipe já foi notificada.');
-        return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
+        twiml.message('Erro interno. A equipe já foi notificada.');
+
+        return new NextResponse(twiml.toString(), {
+            status: 200,
+            headers: { "Content-Type": "text/xml" }
+        });
     }
 }
