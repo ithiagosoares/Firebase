@@ -6,3 +6,5 @@ env:
     secret: TWILIO_ACCOUNT_SID
   - variable: TWILIO_AUTH_TOKEN
     secret: TWILIO_AUTH_TOKEN
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
