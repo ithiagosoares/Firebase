@@ -6,15 +6,14 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const cronSecret = process.env.CRON_SECRET; // Nossa nova senha secreta
 
 // Rota para o CRON Job - Envia as mensagens agendadas
 export async function GET(req: NextRequest) {
-    // 1. ✅ NOVA VERIFICAÇÃO DE SEGURANÇA (BEARER TOKEN)
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${cronSecret}`) {
-        console.warn("CRON: Acesso não autorizado (token inválido ou ausente).");
-        return new Response('Acesso não autorizado', { status: 401 });
+    // 1. ✅ VERIFICAÇÃO DE SEGURANÇA (SUGERIDA PELO USUÁRIO)
+    // Verificando o User-Agent que o Google Cloud Scheduler envia por padrão.
+    if (req.headers.get('user-agent') !== 'Google-Cloud-Scheduler') {
+        console.warn("CRON: Acesso não autorizado (User-Agent inválido).");
+        return new Response('Acesso não autorizado', { status: 403 });
     }
 
     const client = twilio(accountSid, authToken);
