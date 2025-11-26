@@ -1,12 +1,12 @@
 
 import * as admin from 'firebase-admin';
 
-// Esta verificação impede que o app seja inicializado múltiplas vezes,
-// o que causaria um erro em um ambiente serverless.
+// Esta verificação impede que o app seja inicializado múltiplas vezes.
 if (!admin.apps.length) {
   admin.initializeApp({
-    // As credenciais são descobertas automaticamente no ambiente do Firebase.
-    // O mesmo para o databaseURL, que é inferido do projeto.
+    // Fornecer o projectId explicitamente remove a ambiguidade
+    // e garante a inicialização correta no ambiente do App Hosting.
+    projectId: process.env.GCLOUD_PROJECT,
   });
 }
 
