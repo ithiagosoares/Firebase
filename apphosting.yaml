@@ -1,6 +1,6 @@
-
 # Define as variáveis de ambiente para o backend do App Hosting.
 # Isso instrui o Firebase a usar os segredos que já criamos no Secret Manager.
+# Re-triggering build after granting secret access.
 env:
   - variable: TWILIO_ACCOUNT_SID
     secret: TWILIO_ACCOUNT_SID
