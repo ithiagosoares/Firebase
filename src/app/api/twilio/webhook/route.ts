@@ -26,7 +26,13 @@ async function logMessage(conversationRef: FirebaseFirestore.DocumentReference, 
     });
 }
 
-async function sendResponse(client: twilio.Twilio, to: string, from: string, message: string, conversationRef: FirebaseFirestore.DocumentReference) {
+async function sendResponse(
+    client: twilio.Twilio,
+    to: string,
+    from: string,
+    message: string,
+    conversationRef: FirebaseFirestore.DocumentReference
+) {
     await client.messages.create({ body: message, from, to });
     await logMessage(conversationRef, message, 'outbound');
 }
@@ -34,10 +40,8 @@ async function sendResponse(client: twilio.Twilio, to: string, from: string, mes
 
 
 // ============================================================================================
-// ⏰ CORREÇÃO DEFINITIVA DO FUSO HORÁRIO — VERSÃO CONSOLIDADA
+// ⏰ FUNÇÃO PADRÃO PARA CRIAR DATA NO FUSO DE SP (-03:00)
 // ============================================================================================
-
-// 🔥 Cria Data EXACTA no fuso horário de São Paulo, sem conversão automática do Node
 function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0): Date {
     const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/Sao_Paulo",
@@ -51,14 +55,19 @@ function getBrazilDate(baseDate: Date, hour: number, minute: number, addDays = 0
     const month = parts.find(p => p.type === "month")!.value;
     const day = parts.find(p => p.type === "day")!.value;
 
-    // 👇 CRIA UMA STRING ISO FIXA NO FUSO -03:00
-    const iso = `${year}-${month}-${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`;
-    return new Date(iso);
+    // Aplica dias adicionais (AMANHÃ, DEPOIS DE AMANHÃ, DAQUI A X DIAS)
+    const dateObj = new Date(`${year}-${month}-${day}T00:00:00-03:00`);
+    dateObj.setDate(dateObj.getDate() + addDays);
+
+    const finalIso = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`;
+
+    return new Date(finalIso);
 }
 
 
+
 // ============================================================================================
-// 🧠 PARSER DE DATA EM PORTUGUÊS (ROBUSTO)
+// 🧠 PARSER DE DATAS INTELIGENTE, TOTALMENTE EM PT-BR
 // ============================================================================================
 function manualParseBrazilianDate(input: string): Date | null {
     let text = input.trim();
@@ -66,51 +75,75 @@ function manualParseBrazilianDate(input: string): Date | null {
     // Normalização: remove acentos e múltiplos espaços
     text = text
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ");
+        .replace(/\s+/g, " ")
+        .toLowerCase();
 
     const now = new Date();
 
-    const isTomorrow = /\bamanha\b/i.test(text);
-    const isToday = /\bhoje\b/i.test(text);
+    // ------------------------------------------
+    // DETECÇÃO DE FRASES RELATIVAS
+    // ------------------------------------------
+    let addDays = 0;
 
-    let addDay = isTomorrow ? 1 : 0;
+    if (/\bhoje\b/.test(text)) addDays = 0;
+    if (/\bamanha\b/.test(text)) addDays = 1;
+    if (/\bdepois de amanha\b/.test(text)) addDays = 2;
 
-    // Capturas possíveis:
-    // 14h, 14hs, 14h00, 14:00, 9h, 9:30, etc.
-    const h2 = text.match(/(\d{1,2})[:h](\d{2})/i);
-    const h1 = text.match(/(\d{1,2})\s*(?:h|hs)\b/i);
+    // "daqui a 3 dias"
+    const matchDias = text.match(/daqui a (\d+) dias?/);
+    if (matchDias) {
+        addDays = Number(matchDias[1]);
+    }
 
+    // ------------------------------------------
+    // CAPTURA DE HORÁRIO
+    // ------------------------------------------
     let hour = -1;
     let minute = 0;
+
+    // 14:30, 09:45
+    const h2 = text.match(/(\d{1,2}):(\d{2})/);
+
+    // 14h, 14hs
+    const h1 = text.match(/(\d{1,2})\s*(h|hs)\b/);
 
     if (h2) {
         hour = Number(h2[1]);
         minute = Number(h2[2]);
     } else if (h1) {
         hour = Number(h1[1]);
+        minute = 0;
     } else {
-        return null; // Hora inválida
+        return null; // Nenhuma hora válida encontrada
     }
 
     if (hour < 0 || hour > 23) return null;
     if (minute < 0 || minute > 59) return null;
 
-    const date = getBrazilDate(now, hour, minute, addDay);
+    // ------------------------------------------
+    // MONTA A DATA FINAL
+    // ------------------------------------------
+    let date = getBrazilDate(now, hour, minute, addDays);
 
-    // Verificar se já passou hoje
-    const fmt = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Sao_Paulo",
-        year: 'numeric', month: 'numeric', day: 'numeric',
-        hour: 'numeric', minute: 'numeric', second: 'numeric',
-        hour12: false
-    });
-    const parts = fmt.formatToParts(now);
-    const curr = new Date(
-        `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}-${parts.find(p => p.type === 'day')!.value}T${parts.find(p => p.type === 'hour')!.value}:${parts.find(p => p.type === 'minute')!.value}:${parts.find(p => p.type === 'second')!.value}-03:00`
-    );
+    // ------------------------------------------
+    // Se o usuário NÃO disse “amanhã”, mas a hora já passou hoje → agenda amanhã automaticamente
+    // ------------------------------------------
+    if (!/\bamanha\b/.test(text) && !/depois de amanha/.test(text) && !matchDias) {
+        const fmt = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Sao_Paulo",
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: 'numeric', minute: 'numeric', second: 'numeric',
+            hour12: false
+        });
 
-    if (date < curr && !isTomorrow) {
-        return getBrazilDate(now, hour, minute, 1);
+        const parts = fmt.formatToParts(now);
+        const curr = new Date(
+            `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}-${parts.find(p => p.type === 'day')!.value}T${parts.find(p => p.type === 'hour')!.value}:${parts.find(p => p.type === 'minute')!.value}:${parts.find(p => p.type === 'second')!.value}-03:00`
+        );
+
+        if (date < curr) {
+            date = getBrazilDate(now, hour, minute, 1);
+        }
     }
 
     return date;
@@ -119,7 +152,7 @@ function manualParseBrazilianDate(input: string): Date | null {
 
 
 // ============================================================================================
-// 🚀 ROTA PRINCIPAL
+// 🚀 ROTA PRINCIPAL — LÓGICA DO CHATBOT
 // ============================================================================================
 export async function POST(req: NextRequest) {
     try {
@@ -184,7 +217,6 @@ export async function POST(req: NextRequest) {
                 const scheduledMessage = conversationData.scheduledMessage;
 
                 if (!scheduledMessage) {
-                    // fluxo corrompido
                     await conversationRef.set({ state: 'INITIAL' }, { merge: true });
                     await sendResponse(
                         client, from, to,
