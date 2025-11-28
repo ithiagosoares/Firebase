@@ -1,6 +1,8 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import twilio from 'twilio';
-import { db } from "../../../../../lib/firebaseAdmin";
+// CORREÇÃO: Caminho corrigido e importação direta do 'db'
+import { db } from "@/lib/firebase-admin";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
