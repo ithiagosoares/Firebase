@@ -29,6 +29,9 @@ pnpm-debug.log*
 .env*.local
 .env
 
+# Firebase Admin key (NUNCA versionar)
+serviceAccountKey.json
+
 # vercel
 .vercel
 
