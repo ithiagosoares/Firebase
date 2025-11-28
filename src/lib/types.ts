@@ -1,4 +1,8 @@
+
 import { Timestamp } from "firebase/firestore";
+
+// CORREÇÃO: Adiciona e exporta o tipo genérico WithId.
+export type WithId<T> = T & { id: string };
 
 export type User = {
   id: string;
@@ -57,9 +61,14 @@ export type OutboxMessage = {
 };
 
 export type Template = {
-  id: string;
+  // id não é parte do documento no firestore, WithId o adiciona
   title: string;
-  body: string; // CORRIGIDO: de 'content' para 'body'
+  body: string;
+  variables?: string[];
+  attachment?: {
+    name: string;
+    url: string;
+  } | null;
   isDefault?: boolean;
 };
 

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -21,75 +22,82 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { PageHeader } from "@/components/page-header"
 import { type Template } from "@/lib/types"
-import { collection, doc, writeBatch, query, where, getDocs } from "firebase/firestore"
+import { collection, doc, writeBatch, query, where, getDocs, deleteDoc, addDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
+import { useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
-import { deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
 export default function TemplatesPage() {
-  const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
 
+  // CORREÇÃO: Busca da coleção raiz 'templates'
   const templatesCollection = useMemoFirebase(() => {
-    if (!user) return null
-    return collection(firestore, `users/${user.uid}/messageTemplates`)
-  }, [firestore, user]);
+    if (!firestore) return null
+    return collection(firestore, `templates`)
+  }, [firestore]);
 
   const { data: templates, isLoading } = useCollection<Template>(templatesCollection);
 
-  const handleDeleteTemplate = (templateId: string) => {
-    if (!user) return;
-    const templateDocRef = doc(firestore, `users/${user.uid}/messageTemplates/${templateId}`);
-    deleteDocumentNonBlocking(templateDocRef);
-    toast({
-      title: "Template excluído",
-      description: "O modelo de mensagem foi removido.",
-    })
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!firestore) return;
+    try {
+      const templateDocRef = doc(firestore, `templates/${templateId}`);
+      await deleteDoc(templateDocRef);
+      toast({
+        title: "Template excluído",
+        description: "O modelo de mensagem foi removido.",
+      })
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Erro", description: "Não foi possível excluir o template.", variant: "destructive" })
+    }
   };
   
-  const handleDuplicateTemplate = (template: Template) => {
-    if (!user || !templatesCollection) return;
+  const handleDuplicateTemplate = async (template: Template) => {
+    if (!firestore || !templatesCollection) return;
     const newTemplate = {
       ...template,
       title: `${template.title} (Cópia)`,
-      isDefault: false, // Duplicates are never the default
+      isDefault: false,
     };
     delete (newTemplate as any).id
-    addDocumentNonBlocking(templatesCollection, newTemplate);
-    toast({
-      title: "Template duplicado!",
-      description: `O template "${template.title}" foi copiado com sucesso.`,
-    })
+    
+    try {
+      await addDoc(templatesCollection, newTemplate);
+      toast({
+        title: "Template duplicado!",
+        description: `O template "${template.title}" foi copiado com sucesso.`,
+      })
+    } catch(error) {
+      console.error(error)
+      toast({ title: "Erro", description: "Não foi possível duplicar o template.", variant: "destructive" })
+    }
   }
   
   const handleSendTest = (template: Template) => {
     toast({
-      title: "Mensagem de teste enviada!",
-      description: `Um teste do template "${template.title}" foi enviado para o seu número.`,
+      title: "Funcionalidade não implementada",
+      description: `O envio de teste para "${template.title}" ainda não está ativo.`,
     })
   }
 
   const handleSetDefault = async (templateToSet: Template) => {
-    if (!firestore || !user) return;
+    if (!firestore || !templatesCollection) return;
 
     const batch = writeBatch(firestore);
     
-    // Find the current default template, if any
-    const q = query(collection(firestore, `users/${user.uid}/messageTemplates`), where("isDefault", "==", true));
+    const q = query(templatesCollection, where("isDefault", "==", true));
     const querySnapshot = await getDocs(q);
 
-    // Unset the current default
     querySnapshot.forEach((document) => {
-        const oldDefaultRef = doc(firestore, `users/${user.uid}/messageTemplates`, document.id);
+        const oldDefaultRef = doc(firestore, `templates`, document.id);
         batch.update(oldDefaultRef, { isDefault: false });
     });
     
-    // Set the new default
-    const newDefaultRef = doc(firestore, `users/${user.uid}/messageTemplates`, templateToSet.id);
+    const newDefaultRef = doc(firestore, `templates`, templateToSet.id);
     batch.update(newDefaultRef, { isDefault: true });
 
     try {
@@ -128,7 +136,7 @@ export default function TemplatesPage() {
     </div>
   );
 
-  if (isLoading || isUserLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -153,55 +161,49 @@ export default function TemplatesPage() {
             <Card key={template.id} className="flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between">
                   <CardTitle className="pr-4">{template.title}</CardTitle>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="shrink-0 text-muted-foreground hover:text-amber-500"
-                    onClick={() => handleSetDefault(template)}
-                  >
-                    <Star className={cn("h-5 w-5", template.isDefault && "fill-amber-400 text-amber-500")} />
-                    <span className="sr-only">Marcar como padrão</span>
-                  </Button>
+                  {template.isDefault !== undefined && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="shrink-0 text-muted-foreground hover:text-amber-500"
+                      onClick={() => handleSetDefault(template)}
+                    >
+                      <Star className={cn("h-5 w-5", template.isDefault && "fill-amber-400 text-amber-500")} />
+                      <span className="sr-only">Marcar como padrão</span>
+                    </Button>
+                  )}
               </CardHeader>
               <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground line-clamp-3">{template.content}</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">{template.body}</p>
               </CardContent>
-              <CardFooter className="flex flex-col items-start gap-2 bg-muted/50 p-4 border-t">
-                  <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Workflow className="h-3 w-3" /> Usado em: <span className="font-medium text-foreground">Fluxo de Lembrete</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                      Variáveis: <span className="font-medium text-foreground">2</span>
-                  </div>
-                  <div className="w-full flex justify-between items-center mt-2">
-                    <Button variant="outline" size="sm" onClick={() => handleSendTest(template)}>
-                      <Send className="mr-2 h-4 w-4" />
-                      Teste
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                            <Link href={`/templates/edit/${template.id}`} className="cursor-pointer">
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          Duplicar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteTemplate(template.id)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+              <CardFooter className="flex justify-between items-center bg-muted/50 p-4 border-t">
+                  <Button variant="outline" size="sm" onClick={() => handleSendTest(template)}>
+                    <Send className="mr-2 h-4 w-4" />
+                    Teste
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                          <Link href={`/templates/edit/${template.id}`} className="cursor-pointer">
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                          </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Duplicar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDeleteTemplate(template.id)} className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
               </CardFooter>
             </Card>
           ))}
