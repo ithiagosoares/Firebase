@@ -8,6 +8,13 @@ export type User = {
   whatsappApiToken?: string;
 }
 
+export type Clinic = {
+    id: string;
+    isTwilioConnected: boolean;
+    twilioSubaccountSid: string;
+    wabaId: string; // WhatsApp Business Account ID
+}
+
 export type Patient = {
   id: string;
   name: string;
@@ -25,8 +32,8 @@ export type Appointment = {
   userId: string;
   dateTime: Timestamp;
   notes: string;
-  patientName?: string; // Not in Firestore, might be added for UI
-  type?: string; // Not in Firestore, might be added for UI
+  patientName?: string; 
+  type?: string; 
 };
 
 export type ConsentLog = {
@@ -52,7 +59,7 @@ export type OutboxMessage = {
 export type Template = {
   id: string;
   title: string;
-  content: string;
+  body: string; // CORRIGIDO: de 'content' para 'body'
   isDefault?: boolean;
 };
 

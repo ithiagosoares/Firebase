@@ -1,3 +1,4 @@
+
 # Define as variáveis de ambiente para o backend do App Hosting.
 # Isso instrui o Firebase a usar os segredos que já criamos no Secret Manager.
 # Re-triggering build after granting secret access.
@@ -8,3 +9,6 @@ env:
     secret: TWILIO_AUTH_TOKEN
   - variable: CRON_SECRET
     secret: CRON_SECRET
+  # ADICIONADO: Fornece a chave de serviço do Firebase para o Admin SDK
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
