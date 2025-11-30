@@ -18,13 +18,18 @@ export function getFirebaseAdminApp() {
     return alreadyCreatedApp;
   }
 
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // A variável agora é esperada em formato Base64
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-  if (!serviceAccountString) {
+  if (!serviceAccountBase64) {
     throw new Error('A variável de ambiente FIREBASE_SERVICE_ACCOUNT_KEY não está definida ou está vazia.');
   }
 
   try {
+    // PASSO 1: Decodificar a string Base64 para obter o JSON original
+    const serviceAccountString = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+    
+    // PASSO 2: Analisar o JSON decodificado
     const credentials = JSON.parse(serviceAccountString) as FirebaseAdminCredentials;
 
     const app = admin.initializeApp(
@@ -37,7 +42,11 @@ export function getFirebaseAdminApp() {
     return app;
   } catch (error: any) {
     console.error("### ERRO CRÍTICO AO INICIALIZAR FIREBASE ADMIN ###");
-    console.error("Falha ao analisar o JSON da FIREBASE_SERVICE_ACCOUNT_KEY. Verifique se o segredo no Secret Manager contém um JSON válido.");
+    if (error.message.includes("Unexpected token")) {
+        console.error("Falha ao decodificar ou analisar a FIREBASE_SERVICE_ACCOUNT_KEY. Verifique se o segredo no Secret Manager contém um JSON VÁLIDO CODIFICADO EM BASE64.");
+    } else {
+        console.error("Falha ao analisar o JSON da FIREBASE_SERVICE_ACCOUNT_KEY. Verifique se o segredo no Secret Manager contém um JSON válido.");
+    }
     console.error("Erro original:", error.message);
     throw new Error("Falha na inicialização do Firebase Admin. O servidor não pode operar.");
   }
