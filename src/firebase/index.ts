@@ -5,6 +5,7 @@ import { firebaseConfig } from "@/firebase/config";
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // CORREÇÃO: Importa o getStorage
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -32,8 +33,8 @@ export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    // CORREÇÃO: Renomeado para 'db' para consistência em todo o projeto.
-    db: getFirestore(firebaseApp),
+    firestore: getFirestore(firebaseApp), // CORREÇÃO: Mantido como firestore por consistência com o provider
+    storage: getStorage(firebaseApp),     // CORREÇÃO: Inicializa e adiciona o Storage
   };
 }
 

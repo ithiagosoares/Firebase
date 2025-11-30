@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useUploadFile } from "@/hooks/use-upload-file" // CORREÇÃO: Caminho de importação corrigido
-import { UploadedFile } from "@/components/uploaded-file" // CORREÇÃO: Caminho de importação corrigido
+import { useUploadFile } from "@/hooks/use-upload-file"
+import { UploadedFile } from "@/components/uploaded-file"
 
 export type TemplateFormData = {
   title: string;
@@ -34,6 +34,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
   const [variables, setVariables] = useState<string[]>([]);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [existingAttachment, setExistingAttachment] = useState(template?.attachment || null)
+  const [previewName, setPreviewName] = useState("Maria"); // State for live preview
 
   const { upload, isUploading, error: uploadError } = useUploadFile();
 
@@ -65,9 +66,8 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
   const handleSave = async () => {
     let attachmentData = existingAttachment;
 
-    if (attachment) { // Se um novo arquivo foi selecionado
+    if (attachment) {
         const uploadedFile = await upload(attachment);
-        // Apenas atualiza se o upload for bem-sucedido
         if (uploadedFile) {
             attachmentData = uploadedFile;
         }
@@ -88,7 +88,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8"> 
         <div className="grid gap-2">
             <Label htmlFor="title">Título do Template</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -98,8 +98,28 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
             <Label htmlFor="body">Conteúdo da Mensagem</Label>
             <Textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} rows={5} />
             <p className="text-sm text-muted-foreground">
-                Use chaves para variáveis, como `{{cliente}}`.
+                {'Use chaves para variáveis, como {{cliente}}.'}
             </p>
+        </div>
+
+        {/* Live Preview Section */}
+        <div className="grid gap-4 rounded-lg border bg-muted/40 p-4">
+            <div className="flex items-center gap-2">
+                <Label htmlFor="preview-name" className="text-sm font-semibold whitespace-nowrap">
+                    Exemplo com o nome:
+                </Label>
+                <Input 
+                    id="preview-name" 
+                    value={previewName} 
+                    onChange={(e) => setPreviewName(e.target.value)}
+                    className="h-8 w-auto flex-1"
+                    placeholder="Ex: João, Maria..."
+                />
+            </div>
+            <p className="text-sm font-semibold">Pré-visualização:</p>
+            <div className="rounded-md border bg-background p-3 text-sm min-h-[60px]">
+                {body.replace(/\{\{cliente\}\}/g, previewName || '...')}
+            </div>
         </div>
 
         <div 
