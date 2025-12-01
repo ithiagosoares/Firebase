@@ -57,7 +57,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
   useEffect(() => {
     if (template) {
       setTitle(template.title);
-      setBody(template.body);
+      setBody(template.body || ""); // CORREÇÃO: Garante que body nunca seja undefined
       setVariables(template.variables || []);
       setExistingAttachment(template.attachment || null);
     }
@@ -118,7 +118,8 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
             </div>
             <p className="text-sm font-semibold">Pré-visualização:</p>
             <div className="rounded-md border bg-background p-3 text-sm min-h-[60px]">
-                {body.replace(/\{\{cliente\}\}/g, previewName || '...')}
+                {/* CORREÇÃO: Garante que a substituição não falhe se body for undefined */}
+                {(body || '').replace(/\{\{cliente\}\}/g, previewName || '...')}
             </div>
         </div>
 
