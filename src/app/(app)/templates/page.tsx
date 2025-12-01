@@ -19,28 +19,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { PageHeader } from "@/components/page-header"
-import { type Template, WithId } from "@/lib/types" // CORREÇÃO: Importa WithId
+import { type Template, WithId } from "@/lib/types"
 import { collection, doc, writeBatch, query, where, getDocs, deleteDoc, addDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-import { useFirestore, useMemoFirebase } from "@/firebase/provider"
+import { useFirebase, useMemoFirebase } from "@/firebase/provider" // CORREÇÃO: Importar useFirebase
 import { useCollection } from "@/firebase/firestore/use-collection"
 
 export default function TemplatesPage() {
-  const firestore = useFirestore()
+  // CORREÇÃO: Usar useFirebase para obter tudo o que precisamos
+  const { firestore, user } = useFirebase()
   const { toast } = useToast()
 
   const templatesCollection = useMemoFirebase(() => {
-    if (!firestore) return null
-    return collection(firestore, `templates`)
-  }, [firestore]);
+    if (!firestore || !user) return null
+    return collection(firestore, `users/${user.uid}/messageTemplates`)
+  }, [firestore, user]);
 
   const { data: templates, isLoading } = useCollection<Template>(templatesCollection);
 
   const handleDeleteTemplate = async (templateId: string) => {
-    if (!firestore) return;
-    const templateDocRef = doc(firestore, `templates/${templateId}`);
+    if (!firestore || !user) return;
+    const templateDocRef = doc(firestore, `users/${user.uid}/messageTemplates/${templateId}`);
     try {
       await deleteDoc(templateDocRef);
       toast({
@@ -53,9 +54,8 @@ export default function TemplatesPage() {
     }
   };
   
-  // CORREÇÃO: A função recebe o tipo correto com ID
   const handleDuplicateTemplate = async (template: WithId<Template>) => {
-    if (!firestore || !templatesCollection) return;
+    if (!firestore || !user || !templatesCollection) return;
     const { id, ...templateData } = template; // Remove o ID antes de duplicar
     const newTemplate = {
       ...templateData,
@@ -82,22 +82,21 @@ export default function TemplatesPage() {
     })
   }
 
-  // CORREÇÃO: A função recebe o tipo correto com ID, resolvendo o erro de build
   const handleSetDefault = async (templateToSet: WithId<Template>) => {
-    if (!firestore || !templatesCollection) return;
+    if (!firestore || !user) return;
 
     const batch = writeBatch(firestore);
-    const q = query(templatesCollection, where("isDefault", "==", true));
+    const collectionPath = `users/${user.uid}/messageTemplates`;
+    const templatesRef = collection(firestore, collectionPath);
+    const q = query(templatesRef, where("isDefault", "==", true));
     
     try {
         const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((document) => {
-            const oldDefaultRef = doc(firestore, `templates`, document.id);
-            batch.update(oldDefaultRef, { isDefault: false });
+        querySnapshot.forEach((doc) => {
+            batch.update(doc.ref, { isDefault: false });
         });
         
-        // Agora templateToSet.id existe e é seguro
-        const newDefaultRef = doc(firestore, `templates`, templateToSet.id);
+        const newDefaultRef = doc(firestore, collectionPath, templateToSet.id);
         batch.update(newDefaultRef, { isDefault: true });
 
         await batch.commit();
@@ -144,7 +143,7 @@ export default function TemplatesPage() {
 
       {templates && templates.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => ( // template aqui é WithId<Template>
+          {templates.map((template) => (
             <Card key={template.id} className="flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                   <CardTitle className="truncate">{template.title}</CardTitle>
