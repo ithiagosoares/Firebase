@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect } from "react"
 import { usePathname, useRouter } from "next/navigation";
-import { Upload, ExternalLink, Save, Loader2, CheckCircle, Workflow } from "lucide-react"
+import { Upload, ExternalLink, Save, Loader2, CheckCircle } from "lucide-react"
 import Link from "next/link"
 
 // Tipos locais
@@ -38,7 +38,6 @@ import { updateProfile } from "firebase/auth"
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('account');
 
   // Efeito para ler o hash da URL na montagem do componente
@@ -78,10 +77,6 @@ export default function SettingsPage() {
   const [dpoContact, setDpoContact] = useState("dpo@vitallink.com")
   const [allowConsentExport, setAllowConsentExport] = useState(true)
   const [retentionPeriod, setRetentionPeriod] = useState("5")
-  
-  // n8n State
-  const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
-  const [isN8nConnected, setIsN8nConnected] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
     if (!authUser) return null;
@@ -103,14 +98,6 @@ export default function SettingsPage() {
         const nameParts = userData.name.split(' ');
         setFirstName(nameParts[0] || "");
         setLastName(nameParts.slice(1).join(' ') || "");
-      }
-      
-      const n8nUrl = (userData as any).n8nWebhookUrl;
-      if(n8nUrl) {
-        setN8nWebhookUrl(n8nUrl);
-        setIsN8nConnected(true);
-      } else {
-        setIsN8nConnected(false);
       }
     }
   }, [userData]);
@@ -153,23 +140,6 @@ export default function SettingsPage() {
         setProfilePicFile(null);
     }
   }
-  
-  const handleN8nConnect = () => {
-    if (!userDocRef || !n8nWebhookUrl) {
-        toast({ variant: "destructive", title: "URL Ausente", description: "Por favor, insira a URL do webhook do n8n." });
-        return;
-    }
-    setDocumentNonBlocking(userDocRef, { n8nWebhookUrl: n8nWebhookUrl }, { merge: true });
-    toast({ title: "Conexão Bem-Sucedida!", description: "Sua conta agora está pronta para enviar mensagens via n8n." });
-  };
-
-  const handleN8nDisconnect = () => {
-    if (!userDocRef) return;
-    setDocumentNonBlocking(userDocRef, { n8nWebhookUrl: "" }, { merge: true });
-    setN8nWebhookUrl("");
-    toast({ variant: "default", title: "Desconectado!", description: "Sua integração com o n8n foi removida." });
-  };
-
 
   const plans = [
     {
@@ -229,7 +199,6 @@ export default function SettingsPage() {
             <TabsTrigger value="account">Conta</TabsTrigger>
             <TabsTrigger value="company">Empresa</TabsTrigger>
             <TabsTrigger value="whatsapp" data-tour-id="whatsapp-tab">WhatsApp</TabsTrigger>
-            <TabsTrigger value="integrations">Integrações</TabsTrigger>
             <TabsTrigger value="plans">Planos</TabsTrigger>
             <TabsTrigger value="payment">Pagamento</TabsTrigger>
             <TabsTrigger value="policy">LGPD</TabsTrigger>
@@ -300,44 +269,6 @@ export default function SettingsPage() {
           <WhatsappIntegration />
         </TabsContent>
 
-        <TabsContent value="integrations">
-          <Card>
-            <CardHeader>
-              <CardTitle>Integrações</CardTitle>
-              <CardDescription>Conecte o VitalLink com outras ferramentas.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-start justify-between p-4 rounded-lg border bg-card text-card-foreground shadow-sm">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Workflow className="h-6 w-6" />
-                    <h3 className="text-lg font-semibold">n8n (Automações)</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Conecte ao seu webhook do n8n para automatizar o envio de mensagens via WhatsApp.
-                    <Link href="#" className="ml-1 text-primary hover:underline">Saber mais.</Link>
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      placeholder="https://seu-n8n.com/webhook/123" 
-                      className="max-w-md" 
-                      value={n8nWebhookUrl}
-                      onChange={(e) => setN8nWebhookUrl(e.target.value)}
-                      disabled={isN8nConnected}
-                    />
-                    {!isN8nConnected ? (
-                      <Button onClick={handleN8nConnect}>Conectar</Button>
-                    ) : (
-                      <Button variant="destructive" onClick={handleN8nDisconnect}>Desconectar</Button>
-                    )}
-                  </div>
-                </div>
-                {isN8nConnected && <CheckCircle className="h-5 w-5 text-green-500" />}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="plans">
           <Card>
             <CardHeader>
@@ -346,10 +277,14 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-6">
               {plans.map((plan) => {
-                const stripeId = (userData as any)?.stripeId;
-                const paymentUrl = plan.paymentLink && stripeId 
-                  ? `${plan.paymentLink}?customer=${stripeId}` 
-                  : plan.paymentLink;
+                if (!authUser) return null;
+
+                const params = new URLSearchParams();
+                params.append('client_reference_id', authUser.uid);
+                if (authUser.email) {
+                    params.append('customer_email', authUser.email);
+                }
+                const paymentUrl = `${plan.paymentLink}?${params.toString()}`;
 
                 return (
                   <Card key={plan.id} className={cn("flex flex-col", plan.highlight && "border-primary")}>
@@ -368,17 +303,11 @@ export default function SettingsPage() {
                       </ul>
                     </CardContent>
                     <CardFooter>
-                      {paymentUrl ? (
                         <Link href={paymentUrl} target="_blank" rel="noopener noreferrer" className="w-full">
-                          <Button className="w-full" disabled={plan.isCurrent || !stripeId}>
+                          <Button className="w-full" disabled={plan.isCurrent}>
                             {plan.isCurrent ? "Plano Atual" : "Escolher Plano"}
                           </Button>
                         </Link>
-                      ) : (
-                        <Button className="w-full" disabled={plan.isCurrent}>
-                          {plan.actionText}
-                        </Button>
-                      )}
                     </CardFooter>
                   </Card>
                 )

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { useToast } from '../hooks/use-toast';
@@ -13,9 +12,11 @@ import { doc, getFirestore } from 'firebase/firestore';
 // Componente que lida com a integração oficial da Twilio
 export function WhatsappIntegration() {
   const { user: authUser } = useUser();
-  const firestore = getFirestore();
   const { toast } = useToast();
   
+  // CORREÇÃO: Garante que o Firestore só é inicializado uma vez e no lado do cliente.
+  const firestore = useMemo(() => getFirestore(), []);
+
   const [isLoading, setIsLoading] = useState(false);
 
   // Referência ao documento da clínica no Firestore
