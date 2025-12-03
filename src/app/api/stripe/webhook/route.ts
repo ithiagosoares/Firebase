@@ -1,89 +1,140 @@
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { initializeApp, getApps } from "firebase/app";
-import { firebaseConfig } from "@/firebase/config"; // Assuming this is your client-side config
+import { getFirebaseAdminApp } from "@/lib/firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-if (!stripeSecretKey) {
-  console.warn("⚠️ STRIPE_SECRET_KEY não configurada, rota ignorada.");
+// Mapeia os IDs de PREÇO (price ID) da Stripe para os nomes dos planos internos.
+const PLAN_MAP = {
+  "price_1SaEtIEEZjNwuQwBmR30ax57": "Essencial", 
+  "price_1SZaPNEEZjNwuQwBIP1smLIm": "Profissional",
+  "price_1SaEyPEEZjNwuQwBGrutOkgy": "Premium",
+};
+
+if (!stripeSecretKey || !webhookSecret) {
+  console.warn("⚠️ Chaves da Stripe ou do Webhook não configuradas. A rota do webhook será ignorada.");
 }
 
 export async function POST(req: NextRequest) {
-  if (!stripeSecretKey) {
-    return new Response("Stripe desativado no ambiente de build", { status: 200 });
+  if (!stripeSecretKey || !webhookSecret) {
+    return new Response("Stripe não está configurado neste ambiente.", { status: 503 });
   }
 
-  const stripe = new Stripe(stripeSecretKey, {
-    apiVersion: "2024-04-10", // Corrigido
-  });
-  
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
-  const headersList = await headers(); // Corrigido
-  const sig = headersList.get("stripe-signature");
-  const reqBuffer = await req.arrayBuffer();
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10" });
+  const signature = (await headers()).get("stripe-signature");
 
   let event: Stripe.Event;
-
   try {
-    if (!sig) throw new Error("Stripe signature is missing");
-    if (!webhookSecret) throw new Error("Stripe webhook secret is not configured.");
-    event = stripe.webhooks.constructEvent(
-      Buffer.from(reqBuffer),
-      sig,
-      webhookSecret
-    );
+    const body = await req.text();
+    if (!signature) throw new Error("Assinatura do Stripe ausente.");
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err: any) {
-    console.error(`❌ Webhook signature verification failed: ${err.message}`);
+    console.error(`❌ Erro na verificação da assinatura do webhook: ${err.message}`);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  // --- Handle the event ---
+  // --- Manipulação do Evento ---
   switch (event.type) {
-    case "checkout.session.completed":
+    case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+      const { client_reference_id: userId, customer: customerId } = session;
 
-      // Extract necessary data from the session
-      const userId = session.client_reference_id;
-      const priceId = session.line_items?.data[0].price?.id;
-      const stripeCustomerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+      if (!userId || !customerId) {
+        console.error("❌ Faltando userId (client_reference_id) ou customerId na sessão de checkout.");
+        // Retorna 200 para a Stripe para não reenviar, mas registra o erro.
+        return new Response("Dados essenciais ausentes na sessão.", { status: 200 });
+      }
 
-      if (!userId || !priceId || !stripeCustomerId) {
-        const missing = [!userId && "userId", !priceId && "priceId", !stripeCustomerId && "stripeCustomerId"]
-          .filter(Boolean).join(", ");
-        console.error(`❌ Missing essential metadata in checkout session: ${missing}`);
-        return new Response("Webhook Error: Missing essential metadata", { status: 400 });
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+      const priceId = lineItems.data[0]?.price?.id;
+
+      if (!priceId) {
+        console.error(`❌ Não foi possível encontrar o priceId para a sessão de checkout ${session.id}`);
+        return new Response("ID do preço não encontrado.", { status: 200 });
+      }
+
+      const planName = PLAN_MAP[priceId as keyof typeof PLAN_MAP];
+
+      if (!planName) {
+        console.warn(`🔔 Webhook recebeu um priceId não mapeado: ${priceId}`);
+        return new Response("Plano não reconhecido.", { status: 200 });
       }
 
       try {
-        // --- Call the Cloud Function ---
-        // This initializes a CLIENT-SIDE Firebase app instance to call the function.
-        // It's safe and doesn't require admin privileges.
-        if (!getApps().length) {
-            initializeApp(firebaseConfig);
-        }
-        const functions = getFunctions(undefined, 'southamerica-east1');
-        const updateUserPlan = httpsCallable(functions, 'updateUserPlanOnPayment');
+        const adminApp = getFirebaseAdminApp();
+        const db = getFirestore(adminApp);
+
+        const clinicRef = db.collection("clinics").doc(userId);
         
-        await updateUserPlan({
-            userId,
-            priceId,
-            stripeCustomerId,
+        await db.runTransaction(async (transaction) => {
+            transaction.set(clinicRef, {
+                plan: planName,
+                monthlyUsage: 0, // Zera o contador de uso no novo ciclo
+                stripeCustomerId: customerId,
+                stripePriceId: priceId, // Salva o priceId para referência futura
+            }, { merge: true });
         });
 
-        console.log(`✅ Successfully triggered Cloud Function to update plan for UserID: ${userId}`);
-      } catch (error) {
-        console.error("❌ Error triggering updateUserPlan Cloud Function:", error);
-        // The error is logged, but we still return 200 to Stripe because the event was received.
-        // The actual business logic failure should be monitored in the Cloud Function logs.
-        return new Response("Webhook Error: Failed to trigger backend processing.", { status: 500 });
+        console.log(`✅ Plano atualizado com sucesso para [${planName}] para o usuário ${userId}.`);
+
+      } catch (error: any) {
+        console.error(`🔥 Erro ao atualizar o plano no Firestore para o usuário ${userId}:`, error.message);
+        return new Response("Erro interno ao processar a assinatura.", { status: 500 });
       }
+
       break;
+    }
+
+    case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const priceId = invoice.lines.data[0]?.price?.id;
+
+        if (!customerId || !priceId) {
+            console.error('❌ invoice.payment_succeeded: Faltando customerId ou priceId.');
+            return new Response('Dados essenciais da fatura ausentes.', { status: 200 });
+        }
+
+        const planName = PLAN_MAP[priceId as keyof typeof PLAN_MAP];
+        if (!planName) {
+            console.warn(`🔔 invoice.payment_succeeded: PriceId não mapeado: ${priceId}`);
+            return new Response("Plano não reconhecido.", { status: 200 });
+        }
+
+        try {
+            const adminApp = getFirebaseAdminApp();
+            const db = getFirestore(adminApp);
+
+            // Encontra a clínica pelo ID do cliente Stripe
+            const clinicsQuery = db.collection('clinics').where('stripeCustomerId', '==', customerId).limit(1);
+            const clinicSnapshot = await clinicsQuery.get();
+
+            if (clinicSnapshot.empty) {
+                console.error(`❌ invoice.payment_succeeded: Nenhuma clínica encontrada para o stripeCustomerId: ${customerId}`);
+                return new Response('Usuário não encontrado.', { status: 200 });
+            }
+
+            const clinicDoc = clinicSnapshot.docs[0];
+            await clinicDoc.ref.update({
+                plan: planName, // Garante que o plano está correto
+                monthlyUsage: 0, // Zera o contador na renovação!
+            });
+
+            console.log(`✅ Renovação de assinatura processada para ${clinicDoc.id}. Plano [${planName}] revalidado e uso zerado.`);
+
+        } catch (error: any) {
+            console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error.message);
+            return new Response("Erro interno ao processar a renovação.", { status: 500 });
+        }
+
+        break;
+    }
 
     default:
-      console.log(`🔔 Received unhandled event type: ${event.type}`);
+      console.log(`🔔 Evento de webhook não tratado recebido: ${event.type}`);
   }
 
   return new Response(JSON.stringify({ received: true }), { status: 200 });

@@ -1,76 +1,88 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { useToast } from '../hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle, Link as LinkIcon } from 'lucide-react';
+import { useUser } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc, getFirestore } from 'firebase/firestore';
 
-// URL correta para o backend do WhatsApp rodando no Cloud Run
-const WPP_BACKEND_URL = 'https://vitallink-whatsapp-814805864825.southamerica-east1.run.app';
-
+// Componente que lida com a integração oficial da Twilio
 export function WhatsappIntegration() {
-  const [connectionStatus, setConnectionStatus] = useState('Desconhecido');
-  const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user: authUser } = useUser();
+  const firestore = getFirestore();
   const { toast } = useToast();
+  
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Função para buscar o QR code ou o status
-  const checkSessionStatus = async () => {
+  // Referência ao documento da clínica no Firestore
+  const clinicDocRef = authUser ? doc(firestore, 'clinics', authUser.uid) : null;
+  const { data: clinicData } = useDoc<{ isTwilioConnected?: boolean }>(clinicDocRef);
+
+  const isConnected = clinicData?.isTwilioConnected === true;
+
+  // Função para iniciar o fluxo de conexão da Twilio
+  const handleConnect = async () => {
     setIsLoading(true);
-    setQrCodeBase64(null); // Limpa o QR code antigo
+    toast({ title: "Iniciando conexão...", description: "Você será redirecionado para a Twilio." });
 
     try {
-      // O backend espera um POST para /start-session com um userId.
-      const response = await axios.post(`${WPP_BACKEND_URL}/start-session`, {
-        userId: 'vitallink-frontend' // Usando um ID fixo para esta integração
+      const response = await fetch('/api/twilio/embedded-signup', {
+        method: 'POST',
       });
 
-      if (response.data.qr) {
-        setConnectionStatus('Aguardando leitura do QR Code');
-        setQrCodeBase64(response.data.qr);
-        toast({ title: 'QR Code Gerado', description: 'Escaneie o código para conectar.' });
-      } else if (response.data.message === 'Client is already connected!') {
-        setConnectionStatus('Conectado');
-        toast({ title: 'Sucesso', description: 'A conexão com o WhatsApp já está ativa.' });
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        // Abre a URL de consentimento da Twilio em uma nova aba/popup
+        window.open(data.url, 'twilioConnect', 'width=800,height=600');
       } else {
-        setConnectionStatus('Desconectado');
+        throw new Error(data.error || 'Falha ao obter URL da Twilio.');
       }
-    } catch (error) {
-      console.error('Falha ao conectar com o backend do WhatsApp:', error);
-      setConnectionStatus('Erro de conexão com o serviço');
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível conectar ao serviço de mensagens.' });
+    } catch (error: any) {
+      console.error('Falha ao iniciar a conexão com a Twilio:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro de Conexão',
+        description: error.message || 'Não foi possível iniciar o processo de conexão.',
+      });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Integração com WhatsApp</CardTitle>
+        <CardTitle>Integração com WhatsApp Oficial</CardTitle>
         <CardDescription>
-          Conecte sua conta do WhatsApp para automatizar o envio de mensagens para seus pacientes.
+          Conecte sua conta do WhatsApp Business para enviar mensagens de forma automatizada e segura através da API oficial.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className={`h-3 w-3 rounded-full ${connectionStatus === 'Conectado' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <p>Status: <strong>{connectionStatus}</strong></p>
-        </div>
-
-        {qrCodeBase64 && (
-          <div className="flex flex-col items-center gap-2 p-4 border rounded-md">
-            <p className="text-sm text-center">Escaneie o código abaixo com o app do WhatsApp no seu celular para conectar.</p>
-            {/* Corrigindo o src da imagem para usar o formato correto de data URL */}
-            <img src={qrCodeBase64} alt="WhatsApp QR Code" className="w-48 h-48" />
+      <CardContent className="flex flex-col items-center justify-center gap-4 p-6">
+        {isConnected ? (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <CheckCircle className="h-12 w-12 text-green-500" />
+            <h3 className="text-lg font-semibold">Conexão Ativa</h3>
+            <p className="text-sm text-muted-foreground">Sua conta do WhatsApp Business está conectada com sucesso.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 text-center">
+             <LinkIcon className="h-10 w-10 text-muted-foreground" />
+             <h3 className="text-lg font-semibold">Nenhuma conexão encontrada</h3>
+             <p className="text-sm text-muted-foreground max-w-md">Clique no botão abaixo para ser guiado pelo processo de conexão segura da Twilio e habilitar o envio de mensagens.</p>
+            <Button onClick={handleConnect} disabled={isLoading} size="lg" className="mt-4">
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Aguardando...</>
+              ) : (
+                'Conectar com WhatsApp'
+              )}
+            </Button>
           </div>
         )}
-
-        <Button onClick={checkSessionStatus} disabled={isLoading}>
-          {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Buscando sessão...</> : 'Verificar Conexão / Gerar QR Code'}
-        </Button>
       </CardContent>
     </Card>
   );

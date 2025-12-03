@@ -17,6 +17,8 @@ export type Clinic = {
     isTwilioConnected: boolean;
     twilioSubaccountSid: string;
     wabaId: string; // WhatsApp Business Account ID
+    plan?: 'Essencial' | 'Profissional' | 'Premium' | 'Trial'; // O plano de assinatura atual da clínica
+    monthlyUsage?: number; // O número de conversas usadas no ciclo de faturamento atual
 }
 
 export type Patient = {

@@ -1,16 +1,21 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
-import { getFirebaseAdminApp } from "@/lib/firebase-admin"; // CORRIGIDO: Usando a inicialização centralizada
-import { Patient, Workflow, Template, Clinic } from "@/lib/types"; // Supondo que você tenha um arquivo de tipos
-import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks, parseISO } from "date-fns";
+import { getFirebaseAdminApp } from "@/lib/firebase-admin";
+import { Patient, Workflow, Template, Clinic } from "@/lib/types";
+import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
 import twilio from "twilio";
 
-// Inicializa o app e o Firestore uma vez
 const adminApp = getFirebaseAdminApp();
 const db = getFirestore(adminApp);
 
-// Função auxiliar para calcular a diferença de tempo com base na unidade
+const PLAN_LIMITS = {
+    Essencial: 150,
+    Profissional: 300,
+    Premium: 750,
+    Trial: 10, // Limite para trial
+};
+
 const calculateDateDifference = (date1: Date, date2: Date, unit: 'hours' | 'days' | 'weeks' | 'months'): number => {
     switch (unit) {
         case 'hours': return differenceInHours(date1, date2);
@@ -21,14 +26,7 @@ const calculateDateDifference = (date1: Date, date2: Date, unit: 'hours' | 'days
     }
 };
 
-/**
- * CRON Job para agendar e enviar mensagens de fluxos de trabalho.
- * Este processo tem duas partes:
- * 1. Scheduler: Encontra fluxos de trabalho e cria as mensagens na coleção `scheduled_messages`.
- * 2. Sender: Envia as mensagens que estão na coleção `scheduled_messages`.
- */
 export async function GET(request: NextRequest) {
-    // 1. 🚨 Autorização
     const secret = request.headers.get("x-cron-secret");
     if (secret !== process.env.CRON_SECRET) {
         console.warn("CRON: Tentativa de acesso não autorizada.");
@@ -39,9 +37,6 @@ export async function GET(request: NextRequest) {
     console.log(`CRON: Iniciando execução em ${now.toISOString()}`);
 
     try {
-        // =================================================================================
-        // PARTE 1: O AGENDADOR (Scheduler)
-        // =================================================================================
         console.log("CRON: Fase 1 - Procurando clínicas e fluxos de trabalho...");
 
         const clinicsSnapshot = await db.collection("clinics").where("isTwilioConnected", "==", true).get();
@@ -52,36 +47,38 @@ export async function GET(request: NextRequest) {
         const schedulingPromises = clinicsSnapshot.docs.map(async (clinicDoc) => {
             const clinic = clinicDoc.data() as Clinic;
             const userId = clinicDoc.id;
+            const plan = clinic.plan || 'Trial'; // Assume Trial se nenhum plano estiver definido
+            const limit = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] || 0;
+            const usage = clinic.monthlyUsage || 0;
 
-            if (!clinic.twilioSubaccountSid) {
-                console.log(`CRON: Clínica ${userId} não tem Subaccount SID. Pulando.`);
+            if (usage >= limit) {
+                console.log(`CRON: Limite do plano '${plan}' atingido para a clínica ${userId} (${usage}/${limit}). Pulando agendamento.`);
                 return;
             }
 
             const workflowsSnapshot = await db.collection(`users/${userId}/workflows`).where("active", "==", true).get();
-            if (workflowsSnapshot.empty) {
-                // Isso é normal, não um erro. Apenas log para debug.
-                // console.log(`CRON: Nenhuma workflow ativo para o usuário ${userId}.`);
-                return;
-            }
+            if (workflowsSnapshot.empty) return;
+
+            let newMessagesScheduled = 0;
 
             for (const workflowDoc of workflowsSnapshot.docs) {
+                if (usage + newMessagesScheduled >= limit) break; // Para o loop se o limite for atingido
+
                 const workflow = workflowDoc.data() as Workflow;
-                
                 const patientsSnapshot = await db.collection(`users/${userId}/patients`).get();
-                const patientsMap = new Map<string, Patient>(
-                    patientsSnapshot.docs.map(doc => [doc.id, doc.data() as Patient])
-                );
+                const patientsMap = new Map<string, Patient>(patientsSnapshot.docs.map(doc => [doc.id, doc.data() as Patient]));
 
                 for (const patientId of workflow.patients) {
+                    if (usage + newMessagesScheduled >= limit) break;
+
                     const patient = patientsMap.get(patientId);
-                    if (!patient || !patient.nextAppointment) {
-                        continue; 
-                    }
+                    if (!patient || !patient.nextAppointment) continue;
                     
                     const appointmentDate = (patient.nextAppointment as unknown as Timestamp).toDate();
 
                     for (const step of workflow.steps) {
+                        if (usage + newMessagesScheduled >= limit) break;
+
                         const { schedule, template: templateId } = step;
                         if (!schedule || !templateId) continue;
 
@@ -96,38 +93,30 @@ export async function GET(request: NextRequest) {
                         }
                         
                         if (shouldSendMessage) {
-                            console.log(`CRON: AGENDANDO MENSAGEM para paciente ${patient.id} do fluxo ${workflow.title}`);
-
                             const templateDoc = await db.doc(`users/${userId}/messageTemplates/${templateId}`).get();
                             const template = templateDoc.data() as Template;
                             if (!template) continue;
 
-                            // VERIFICAÇÃO DE DUPLICIDADE: Checar se já agendamos essa mensagem para este paciente e este passo hoje.
-                            const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-                            const endOfToday = new Date(now.setHours(23, 59, 59, 999));
-
+                            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                             const duplicateCheckSnapshot = await db.collection("scheduled_messages")
                                 .where("patientId", "==", patientId)
                                 .where("workflowId", "==", workflowDoc.id)
                                 .where("stepIndex", "==", workflow.steps.indexOf(step))
                                 .where("createdAt", ">=", startOfToday)
-                                .where("createdAt", "<=", endOfToday)
-                                .limit(1)
                                 .get();
 
-                            if (!duplicateCheckSnapshot.empty) {
-                                console.log(`CRON: Mensagem duplicada para paciente ${patientId} e fluxo ${workflow.title} já agendada hoje. Pulando.`);
-                                continue;
-                            }
+                            if (!duplicateCheckSnapshot.empty) continue;
+                            
+                            console.log(`CRON: AGENDANDO MENSAGEM para paciente ${patient.id}`);
+                            newMessagesScheduled++;
 
                             await db.collection("scheduled_messages").add({
-                                recipient: `whatsapp:${patient.phone}`,
+                                recipient: patient.phone,
                                 message: template.body,
-                                twilioSubaccountSid: clinic.twilioSubaccountSid,
                                 wabaId: clinic.wabaId,
                                 userId: userId,
                                 status: "scheduled",
-                                sendAt: Timestamp.fromDate(now),
+                                patientContext: { name: patient.name },
                                 createdAt: FieldValue.serverTimestamp(),
                                 patientId: patientId,
                                 workflowId: workflowDoc.id,
@@ -142,54 +131,64 @@ export async function GET(request: NextRequest) {
         await Promise.all(schedulingPromises);
         console.log("CRON: Fase 1 - Agendamento concluído.");
 
-        // =================================================================================
-        // PARTE 2: O ENVIADOR (Sender)
-        // =================================================================================
         console.log("CRON: Fase 2 - Enviando mensagens agendadas...");
         
-        const messagesToSendSnapshot = await db
-            .collection("scheduled_messages")
-            .where("status", "==", "scheduled")
-            .get();
-
+        const messagesToSendSnapshot = await db.collection("scheduled_messages").where("status", "==", "scheduled").get();
         if (messagesToSendSnapshot.empty) {
-            console.log("CRON: Nenhuma mensagem na fila para enviar agora.");
             return NextResponse.json({ message: "Nenhuma mensagem nova para processar." }, { status: 200 });
         }
 
+        const masterAccountSid = process.env.TWILIO_ACCOUNT_SID;
+        const masterAuthToken = process.env.TWILIO_AUTH_TOKEN;
+        if (!masterAccountSid || !masterAuthToken) {
+             console.error("CRON: Credenciais master da Twilio não configuradas!");
+             return new NextResponse("Credenciais master da Twilio não configuradas.", { status: 500 });
+        }
+
+        const masterClient = twilio(masterAccountSid, masterAuthToken);
+        const batch = db.batch();
+
+        const clinicUsageUpdate: { [key: string]: number } = {};
+
         const sendingPromises = messagesToSendSnapshot.docs.map(async (doc) => {
             const data = doc.data();
-            const { recipient, message, twilioSubaccountSid, wabaId } = data;
+            const { recipient, message, wabaId, patientContext, userId } = data;
 
-            const masterAccountSid = process.env.TWILIO_ACCOUNT_SID;
-            const masterAuthToken = process.env.TWILIO_AUTH_TOKEN;
-
-            if (!masterAccountSid || !masterAuthToken) {
-                 console.error("CRON: Credenciais master da Twilio não configuradas!");
-                 await doc.ref.update({ status: "failed_missing_credentials" });
-                 return;
-            }
-
-            const subaccountClient = twilio(masterAccountSid, masterAuthToken, { accountSid: twilioSubaccountSid });
+            const personalizedMessage = message.replace(/{{nome_paciente}}/g, patientContext.name || '');
 
             try {
-                await subaccountClient.messages.create({
-                    body: message,
-                    to: recipient,
-                    from: wabaId,
+                await masterClient.messages.create({
+                    body: personalizedMessage,
+                    to: `whatsapp:${recipient}`,
+                    from: `whatsapp:${wabaId}`,
                 });
+                
+                batch.update(doc.ref, { status: "sent", sentAt: FieldValue.serverTimestamp() });
+                
+                if (!clinicUsageUpdate[userId]) clinicUsageUpdate[userId] = 0;
+                clinicUsageUpdate[userId]++;
 
-                await doc.ref.update({ status: "sent", sentAt: FieldValue.serverTimestamp() });
                 console.log(`CRON: Mensagem ${doc.id} enviada para ${recipient}`);
             } catch (error: any) {
-                console.error(`CRON: Erro ao enviar mensagem ${doc.id}:`, error.message);
-                await doc.ref.update({ status: "failed", error: error.message });
+                console.error(`CRON: Erro ao enviar mensagem ${doc.id} para ${recipient}:`, error.message);
+                batch.update(doc.ref, { status: "failed", error: error.message });
             }
         });
 
         await Promise.all(sendingPromises);
-        console.log(`CRON: Fase 2 - Processamento de ${sendingPromises.length} mensagens concluído.`);
 
+        for (const userId in clinicUsageUpdate) {
+            const increment = clinicUsageUpdate[userId];
+            if (increment > 0) {
+                const clinicRef = db.collection("clinics").doc(userId);
+                batch.update(clinicRef, { monthlyUsage: FieldValue.increment(increment) });
+                console.log(`CRON: Incrementando uso da clínica ${userId} em ${increment}.`);
+            }
+        }
+
+        await batch.commit();
+
+        console.log(`CRON: Fase 2 - Processamento de ${sendingPromises.length} mensagens concluído.`);
         return NextResponse.json(
             { message: `Processo CRON finalizado. ${sendingPromises.length} mensagens foram processadas.` },
             { status: 200 }

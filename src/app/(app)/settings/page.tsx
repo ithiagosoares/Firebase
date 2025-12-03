@@ -170,10 +170,54 @@ export default function SettingsPage() {
     toast({ variant: "default", title: "Desconectado!", description: "Sua integração com o n8n foi removida." });
   };
 
+
   const plans = [
-    { id: "trial", name: "Trial", price: "Grátis", priceDescription: "Para testar", features: ["Funcionalidade 1", "Funcionalidade 2"], isCurrent: (userData as any)?.plan === "Trial" || !(userData as any)?.plan, actionText: "Plano atual" },
-    { id: "professional", name: "Profissional", price: "R$ 99", priceDescription: "/mês", highlight: "Mais escolhido", paymentLink: "https://buy.stripe.com/4gMfZhaXz9JN3Bh0R9ffy00", features: ["Tudo do Trial", "Funcionalidade 3"], isCurrent: (userData as any)?.plan === "Profissional", actionText: "Assinar agora" },
-    { id: "team", name: "Equipe", price: "R$ 199", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/4gMfZhaXz9JN3Bh0R9ffy00", features: ["Tudo do Profissional", "Suporte prioritário"], isCurrent: (userData as any)?.plan === "Equipe", actionText: "Fazer Upgrade" },
+    {
+      id: "essential",
+      name: "Essencial",
+      price: "R$ 79",
+      priceDescription: "/mês",
+      paymentLink: "https://buy.stripe.com/9B6dR9fdP7BF4Fl6btffy02",
+      features: [
+        "Até 150 conversas/mês",
+        "Fluxos de automação",
+        "Templates de mensagens",
+        "Suporte via e-mail"
+      ],
+      isCurrent: (userData as any)?.plan === "Essencial",
+      actionText: "Escolher Plano"
+    },
+    {
+      id: "professional",
+      name: "Profissional",
+      price: "R$ 149",
+      priceDescription: "/mês",
+      highlight: "Mais escolhido",
+      paymentLink: "https://buy.stripe.com/5kQ4gz4zb5tx8VB9nFffy01",
+      features: [
+        "Até 300 conversas/mês",
+        "Tudo do Plano Essencial",
+        "Relatórios de envio",
+        "Suporte prioritário"
+      ],
+      isCurrent: (userData as any)?.plan === "Profissional",
+      actionText: "Escolher Plano"
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      price: "R$ 299",
+      priceDescription: "/mês",
+      paymentLink: "https://buy.stripe.com/cNibJ1c1Df470p51Vdffy03",
+      features: [
+        "Até 750 conversas/mês",
+        "Tudo do Plano Profissional",
+        "API de integração (Em Breve)",
+        "Gerente de conta dedicado"
+      ],
+      isCurrent: (userData as any)?.plan === "Premium",
+      actionText: "Escolher Plano"
+    },
   ];
 
   return (
@@ -184,7 +228,7 @@ export default function SettingsPage() {
           <TabsList className="inline-flex w-max space-x-2">
             <TabsTrigger value="account">Conta</TabsTrigger>
             <TabsTrigger value="company">Empresa</TabsTrigger>
-            <TabsTrigger value="whatsapp" data-tour-id="whatsapp-tab">WhatsApp Web</TabsTrigger>
+            <TabsTrigger value="whatsapp" data-tour-id="whatsapp-tab">WhatsApp</TabsTrigger>
             <TabsTrigger value="integrations">Integrações</TabsTrigger>
             <TabsTrigger value="plans">Planos</TabsTrigger>
             <TabsTrigger value="payment">Pagamento</TabsTrigger>
