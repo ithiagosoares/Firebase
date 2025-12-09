@@ -1,15 +1,15 @@
 
 /**
  * ==================================================================================================
- * MASTER FUNCTIONS INDEX - ARQUITETURA DE MICROSERVIÇOS (V20.0 - FINAL)
+ * MASTER FUNCTIONS INDEX - ARQUITETURA DE MICROSERVIÇOS (V21.0)
  *
- * DESCRIÇÃO DA ATUALIZAÇÃO (V20.0):
- * - UNIFICAÇÃO: A função `sendScheduledMessages` agora processa DOIS tipos de agendamentos:
- *   1.  (Existente) Mensagens de Workflows de Pacientes, enviadas via Axios para a API customizada.
- *   2.  (Novo) Mensagens simples agendadas via WhatsApp, enviadas diretamente via Twilio SDK.
- * - Isso resolve o problema de agendamentos do WhatsApp não serem enviados.
+ * DESCRIÇÃO DA ATUALIZAÇÃO (V21.0):
+ * - REMOÇÃO DA TWILIO: Toda a lógica de envio de mensagens via Twilio SDK foi removida.
+ * - FOCO ÚNICO: A função `sendScheduledMessages` agora processa APENAS mensagens de Workflows 
+ *   de Pacientes, enviadas via Axios para a API customizada (n8n/Meta).
+ * - Isso resolve o erro de build `Cannot find module 'twilio'`.
  *
- * @version 20.0.0
+ * @version 21.0.0
  * ==================================================================================================
  */
 
@@ -29,7 +29,6 @@ import { Timestamp } from "firebase-admin/firestore";
 import axios from "axios";
 import Stripe from "stripe";
 import { Response } from "express";
-import twilio from 'twilio'; // <-- ADICIONADO: Import do Twilio
 
 // INICIALIZAÇÃO
 admin.initializeApp();
@@ -39,23 +38,19 @@ const db = admin.firestore();
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const whatsappApiUrl = defineString("WHATSAPP_API_URL");
-// --- ADICIONADOS SECRETS DA TWILIO ---
-const twilioAccountSid = defineSecret("TWILIO_ACCOUNT_SID");
-const twilioAuthToken = defineSecret("TWILIO_AUTH_TOKEN");
-
 
 const getStripeClient = (): Stripe => {
   return new Stripe(stripeSecretKey.value(), { typescript: true });
 };
 
-// INTERFACES (SEU CÓDIGO ORIGINAL)
+// INTERFACES
 interface Patient { id: string; name: string; phone: string; nextAppointment?: Timestamp; }
 interface WorkflowStep { templateId: string; schedule: { quantity: number; unit: string; event: "before" | "after" }; }
 interface Workflow { id: string; active: boolean; patients: string[]; steps: WorkflowStep[]; }
 interface ScheduledMessage { id: string; scheduledTime: Timestamp; status: "Agendado" | "processing" | "sent" | "failed"; userId: string; patientId: string; workflowId: string; templateId: string; patientPhone: string; messageContent: string; }
 
 // ==================================================================================================
-// GATILHO DE CRIAÇÃO DE CLIENTE NA STRIPE (SEU CÓDIGO ORIGINAL)
+// GATILHO DE CRIAÇÃO DE CLIENTE NA STRIPE
 // ==================================================================================================
 export const createCustomerOnSignup = functions
   .region("southamerica-east1")
@@ -94,7 +89,7 @@ export const createCustomerOnSignup = functions
   });
 
 
-// GATILHOS DE WORKFLOW E PACIENTES (SEU CÓDIGO ORIGINAL)
+// GATILHOS DE WORKFLOW E PACIENTES
 export const onWorkflowUpdate = onDocumentUpdated(
   { document: "users/{userId}/workflows/{workflowId}", region: "southamerica-east1" },
   async (event) => {
@@ -133,78 +128,46 @@ export const onPatientAppointmentUpdate = onDocumentUpdated(
 );
 
 // ==================================================================================================
-// EXECUTOR DE MENSAGENS AGENDADAS (V2) - VERSÃO UNIFICADA
+// EXECUTOR DE MENSAGENS AGENDADAS - VERSÃO SIMPLIFICADA (APENAS WORKFLOWS)
 // ==================================================================================================
 export const sendScheduledMessages = onSchedule(
   { 
     schedule: "* * * * *", 
     region: "southamerica-east1", 
     timeZone: "America/Sao_Paulo",
-    // Adicionados secrets da Twilio para o novo fluxo
-    secrets: [whatsappApiUrl, twilioAccountSid, twilioAuthToken] 
+    secrets: [whatsappApiUrl] 
   },
   async () => {
     const now = Timestamp.now();
-    functions.logger.info("CRON: Iniciando ciclo de envio unificado...");
+    functions.logger.info("CRON: Iniciando ciclo de envio de workflows...");
 
-    // --- PARTE 1: Processar mensagens do sistema de Workflows de Pacientes (Lógica Original) ---
     const workflowMessagesQuery = db.collectionGroup("scheduledMessages")
                                    .where("status", "==", "Agendado")
                                    .where("scheduledTime", "<=", now);
     const workflowMessages = await workflowMessagesQuery.get();
     
-    if (!workflowMessages.empty) {
+    if (workflowMessages.empty) {
+        functions.logger.info("CRON: Nenhuma mensagem de workflow para enviar neste ciclo.");
+    } else {
       functions.logger.info(`CRON: Encontradas ${workflowMessages.size} mensagens de WORKFLOWS para processar.`);
-      await Promise.all(workflowMessages.docs.map(processScheduledMessage)); // Usa a sua função original com Axios
-    }
-
-    // --- PARTE 2: Processar mensagens do agendador simples do WhatsApp (Nova Lógica) ---
-    const simpleSchedulerQuery = db.collection("scheduled_messages") // Coleção de topo para agendamentos do WhatsApp
-                                   .where("status", "==", "scheduled")
-                                   .where("sendAt", "<=", now);
-    const simpleMessages = await simpleSchedulerQuery.get();
-
-    if (!simpleMessages.empty) {
-        functions.logger.info(`CRON: Encontradas ${simpleMessages.size} mensagens do AGENDADOR SIMPLES para enviar.`);
-        const client = twilio(twilioAccountSid.value(), twilioAuthToken.value());
-        const twilioSandboxNumber = "whatsapp:+14155238886";
-
-        const promises = simpleMessages.docs.map(async (doc) => {
-            const message = doc.data();
-            try {
-                functions.logger.info(`CRON (Simples): Enviando mensagem ${doc.id} para ${message.recipient}...`);
-                await client.messages.create({
-                    from: twilioSandboxNumber,
-                    to: message.recipient,
-                    body: message.message,
-                });
-                await doc.ref.update({ status: 'sent', sentAt: Timestamp.now() });
-                functions.logger.info(`CRON (Simples): Mensagem ${doc.id} enviada com sucesso.`);
-            } catch (error) {
-                functions.logger.error(`CRON (Simples): Falha ao enviar mensagem ${doc.id}:`, error);
-                await doc.ref.update({ status: 'failed', error: (error as Error).message });
-            }
-        });
-        await Promise.all(promises);
+      await Promise.all(workflowMessages.docs.map(processScheduledMessage));
     }
     
-    if (workflowMessages.empty && simpleMessages.empty) {
-        functions.logger.info("CRON: Nenhuma mensagem para enviar neste ciclo.");
-    }
-    
-    functions.logger.info("CRON: Ciclo de envio unificado concluído.");
+    functions.logger.info("CRON: Ciclo de envio concluído.");
   }
 );
 
 
-// FUNÇÃO DE PROCESSAMENTO PARA WORKFLOWS (SEU CÓDIGO ORIGINAL)
+// FUNÇÃO DE PROCESSAMENTO PARA WORKFLOWS (VIA AXIOS)
 async function processScheduledMessage(doc: admin.firestore.QueryDocumentSnapshot) {
   const message = { id: doc.id, ...doc.data() } as ScheduledMessage;
   await doc.ref.update({ status: "processing" });
   try {
     const url = whatsappApiUrl.value();
     if (!url) throw new Error("WHATSAPP_API_URL não está configurada nos parâmetros de ambiente.");
+    
     await axios.post(`${url}/send-message`, { number: message.patientPhone, message: message.messageContent });
+    
     await doc.ref.update({ status: "sent", processedAt: Timestamp.now() });
     functions.logger.info(`✅ Mensagem de workflow para ${message.patientPhone} delegada.`);
   } catch (error: any) {
@@ -214,7 +177,7 @@ async function processScheduledMessage(doc: admin.firestore.QueryDocumentSnapsho
   }
 }
 
-// FUNÇÕES AUXILIARES (SEU CÓDIGO ORIGINAL)
+// FUNÇÕES AUXILIARES
 async function scheduleMessagesForPatients(userId: string, workflowId: string, steps: WorkflowStep[], patientIds: string[]) {
   const batch = db.batch();
   for (const patientId of patientIds) {
@@ -276,7 +239,7 @@ const replaceVariables = (content: string, patient: Patient): string => {
   return content.replace(/{{NOME_CLIENTE}}/g, patient.name || "[Nome não definido]").replace(/{{DATA_CONSULTA}}/g, formattedDate);
 };
 
-// FUNÇÕES STRIPE (SEU CÓDIGO ORIGINAL)
+// FUNÇÕES STRIPE
 export const createStripeCustomer = onCall({ region: "southamerica-east1", secrets: [stripeSecretKey] }, async (req: CallableRequest) => { if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Usuário não autenticado."); const userRef = db.doc(`users/${req.auth.uid}`); const stripeId = (await userRef.get()).data()?.stripeId; if (stripeId) return { stripeId }; const customer = await getStripeClient().customers.create({ email: req.auth.token.email, metadata: { firebaseUID: req.auth.uid } }); await userRef.set({ stripeId: customer.id }, { merge: true }); return { stripeId: customer.id }; });
 export const createCheckoutSession = onCall({ region: "southamerica-east1", secrets: [stripeSecretKey] }, async (req: CallableRequest) => { if (!req.auth?.uid) throw new HttpsError("unauthenticated", "Usuário não autenticado."); const { priceId, successUrl, cancelUrl } = req.data; if (!priceId || !successUrl || !cancelUrl) throw new HttpsError("invalid-argument", "Campos obrigatórios ausentes."); const stripeId = (await db.doc(`users/${req.auth.uid}`).get()).data()?.stripeId; if (!stripeId) throw new HttpsError("failed-precondition", "Cliente Stripe não encontrado."); const session = await getStripeClient().checkout.sessions.create({ customer: stripeId, payment_method_types: ["card"], line_items: [{ price: priceId, quantity: 1 }], mode: "subscription", success_url: successUrl, cancel_url: cancelUrl, metadata: { firebaseUID: req.auth.uid } }); return { sessionId: session.id }; });
 export const createStripePortalSession = onCall({ region: "southamerica-east1", secrets: [stripeSecretKey] }, async (req: CallableRequest) => { if (!req.auth?.uid) throw new HttpsError("unauthenticated", "URL de retorno obrigatória."); const { returnUrl } = req.data; if (!returnUrl) throw new HttpsError("invalid-argument", "URL de retorno obrigatória."); const stripeId = (await db.doc(`users/${req.auth.uid}`).get()).data()?.stripeId; if (!stripeId) throw new HttpsError("failed-precondition", "Cliente Stripe não encontrado."); const portalSession = await getStripeClient().billingPortal.sessions.create({ customer: stripeId, return_url: returnUrl }); return { url: portalSession.url }; });
