@@ -1,167 +1,186 @@
 
 import { NextRequest, NextResponse } from "next/server";
+import { getFirestore } from "firebase-admin/firestore";
+import { getFirebaseAdminApp } from "@/lib/firebase-admin";
+import { Patient, Workflow, Template, Clinic } from "@/lib/types";
+import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
+import axios from "axios";
 
-// TODO: REMOVER ESTE ARQUIVO APÓS A MIGRAÇÃO COMPLETA PARA A META API
-// import { getFirestore } from "firebase-admin/firestore";
-// import { getFirebaseAdminApp } from "@/lib/firebase-admin";
-// import { Patient, Workflow, Template, Clinic } from "@/lib/types";
-// import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
-// import twilio from "twilio";
+const adminApp = getFirebaseAdminApp();
+const db = getFirestore(adminApp);
 
-// const adminApp = getFirebaseAdminApp();
-// const db = getFirestore(adminApp);
-
-// const PLAN_LIMITS = {
-//     Essencial: 150,
-//     Profissional: 300,
-//     Premium: 750,
-//     Trial: 10, // Limite para trial
-// };
+const PLAN_LIMITS = {
+    Essencial: 150,
+    Profissional: 300,
+    Premium: 750,
+    Trial: 10, // Limite para trial
+};
 
 export async function GET(req: NextRequest) {
-    return NextResponse.json({ message: "Cron job desativado." });
-
+    // A autenticação está temporariamente desativada para simplificar. 
+    // TODO: Reativar a validação do CRON_SECRET em produção.
     // const authHeader = req.headers.get('authorization');
     // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     //     return new NextResponse('Unauthorized', { status: 401 });
     // }
 
-    // try {
-    //     console.log("Iniciando a verificação de workflows...");
-    //     const clinicsSnapshot = await db.collection('clinics').get();
+    try {
+        console.log("Iniciando a verificação de workflows...");
+        const clinicsSnapshot = await db.collection('clinics').get();
 
-    //     for (const clinicDoc of clinicsSnapshot.docs) {
-    //         const clinic = clinicDoc.data() as Clinic;
-    //         const clinicId = clinicDoc.id;
+        for (const clinicDoc of clinicsSnapshot.docs) {
+            const clinic = clinicDoc.data() as Clinic;
+            const clinicId = clinicDoc.id;
 
-    //         const plan = clinic.plan || 'Trial'; // Default to Trial if no plan is set
-    //         const limit = PLAN_LIMITS[plan] || PLAN_LIMITS.Trial;
+            const plan = clinic.plan || 'Trial';
+            const limit = PLAN_LIMITS[plan] || PLAN_LIMITS.Trial;
 
-    //         const usageDoc = await db.collection('message_usage').doc(clinicId).get();
-    //         const currentUsage = usageDoc.exists ? usageDoc.data().count : 0;
+            const usageDoc = await db.collection('message_usage').doc(clinicId).get();
+            const currentUsage = usageDoc.exists ? usageDoc.data().count : 0;
 
-    //         if (currentUsage >= limit) {
-    //             console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan}. Mensagens não serão enviadas.`);
-    //             continue; // Pula para a próxima clínica
-    //         }
+            if (currentUsage >= limit) {
+                console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan}. Mensagens não serão enviadas.`);
+                continue; 
+            }
 
-    //         const patientsSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').where('workflowId', '!=', null).get();
+            const patientsSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').where('workflowId', '!=', null).get();
 
-    //         for (const patientDoc of patientsSnapshot.docs) {
-    //             const patient = patientDoc.data() as Patient;
-    //             if (!patient.workflowId) continue;
+            let processedPatients = 0;
+            for (const patientDoc of patientsSnapshot.docs) {
+                const patient = patientDoc.data() as Patient;
+                if (!patient.workflowId) continue;
 
-    //             const workflowDoc = await db.collection('clinics').doc(clinicId).collection('workflows').doc(patient.workflowId).get();
-    //             if (!workflowDoc.exists) continue;
+                const workflowDoc = await db.collection('clinics').doc(clinicId).collection('workflows').doc(patient.workflowId).get();
+                if (!workflowDoc.exists) continue;
 
-    //             const workflow = workflowDoc.data() as Workflow;
-    //             const messageSent = await processWorkflow(patient, workflow, clinicId, patientDoc.id);
-    //             if (messageSent) {
-    //                 // Se uma mensagem foi enviada, incrementa a contagem de uso
-    //                 const newUsage = (currentUsage || 0) + 1;
-    //                 await db.collection('message_usage').doc(clinicId).set({ count: newUsage }, { merge: true });
+                const workflow = workflowDoc.data() as Workflow;
+                const messageSent = await processWorkflow(patient, workflow, clinicId, patientDoc.id);
+                
+                if (messageSent) {
+                    const newUsage = currentUsage + processedPatients + 1;
+                    if (newUsage >= limit) {
+                        console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan} após envio.`);
+                        await db.collection('message_usage').doc(clinicId).set({ count: newUsage }, { merge: true });
+                        break; 
+                    }
+                    processedPatients++;
+                }
+            }
+            if (processedPatients > 0) {
+                const newTotalUsage = currentUsage + processedPatients;
+                await db.collection('message_usage').doc(clinicId).set({ count: newTotalUsage }, { merge: true });
+            }
+        }
 
-    //                 if (newUsage >= limit) {
-    //                     console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan} após envio.`);
-    //                     break; // Para de processar pacientes para esta clínica
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     return NextResponse.json({ message: "Workflows verificados com sucesso." });
-    // } catch (error) {
-    //     console.error("Erro ao verificar workflows:", error);
-    //     return new NextResponse(`Erro interno do servidor: ${error.message}`, { status: 500 });
-    // }
+        return NextResponse.json({ message: "Workflows verificados com sucesso." });
+    } catch (error) {
+        console.error("Erro ao verificar workflows:", error);
+        return new NextResponse(`Erro interno do servidor: ${error.message}`, { status: 500 });
+    }
 }
 
-// async function processWorkflow(patient: Patient, workflow: Workflow, clinicId: string, patientId: string): Promise<boolean> {
-//     if (!workflow.templates || workflow.templates.length === 0) return false;
+async function processWorkflow(patient: Patient, workflow: Workflow, clinicId: string, patientId: string): Promise<boolean> {
+    if (!workflow.templates || workflow.templates.length === 0) return false;
 
-//     const now = new Date();
-//     const appointmentDate = patient.appointmentDate.toDate();
-//     let messageSent = false;
+    const now = new Date();
+    // Certifique-se de que patient.appointmentDate existe e é um objeto Timestamp antes de chamar toDate()
+    if (!patient.appointmentDate || typeof patient.appointmentDate.toDate !== 'function') return false;
+    const appointmentDate = patient.appointmentDate.toDate();
+    
+    let messageSent = false;
 
-//     for (const templateRef of workflow.templates) {
-//         const templateId = templateRef.id;
-//         const alreadySentSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages')
-//             .where('templateId', '==', templateId)
-//             .limit(1).get();
+    for (const templateRef of workflow.templates) {
+        const templateId = templateRef.id;
+        const alreadySentSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages')
+            .where('templateId', '==', templateId)
+            .limit(1).get();
 
-//         if (!alreadySentSnapshot.empty) continue; // Mensagem já enviada
+        if (!alreadySentSnapshot.empty) continue; 
 
-//         const templateDoc = await db.collection('clinics').doc(clinicId).collection('templates').doc(templateId).get();
-//         if (!templateDoc.exists) continue;
+        const templateDoc = await db.collection('clinics').doc(clinicId).collection('templates').doc(templateId).get();
+        if (!templateDoc.exists) continue;
 
-//         const template = templateDoc.data() as Template;
-//         const trigger = template.trigger;
-//         let shouldSend = false;
+        const template = templateDoc.data() as Template;
+        const trigger = template.trigger;
+        let shouldSend = false;
 
-//         const diffFunctions = {
-//             hours: differenceInHours,
-//             days: differenceInDays,
-//             weeks: differenceInWeeks,
-//             months: differenceInMonths
-//         };
+        const diffFunctions = {
+            hours: differenceInHours,
+            days: differenceInDays,
+            weeks: differenceInWeeks,
+            months: differenceInMonths
+        };
 
-//         const diffFn = diffFunctions[trigger.unit];
-//         if (!diffFn) continue;
+        const diffFn = diffFunctions[trigger.unit];
+        if (!diffFn) continue;
 
-//         const diff = diffFn(appointmentDate, now);
+        const diff = diffFn(appointmentDate, now);
 
-//         if (trigger.when === 'before' && diff > 0 && diff <= trigger.value) {
-//             shouldSend = true;
-//         } else if (trigger.when === 'after' && diff < 0 && Math.abs(diff) >= trigger.value) {
-//             shouldSend = true;
-//         }
+        // Lógica para determinar se a mensagem deve ser enviada
+        if (trigger.when === 'before' && diff >= 0 && diff <= trigger.value) {
+            shouldSend = true;
+        } else if (trigger.when === 'after' && diff < 0 && Math.abs(diff) >= trigger.value) {
+            shouldSend = true;
+        }
 
-//         if (shouldSend) {
-//             await sendMessage(patient, template, clinicId, patientId, templateId);
-//             messageSent = true;
-//             break; // Envia apenas uma mensagem por execução do cron
-//         }
-//     }
-//     return messageSent;
-// }
 
-// async function sendMessage(patient: Patient, template: Template, clinicId: string, patientId: string, templateId: string) {
-//     const credentialsDoc = await db.collection('twilio_credentials').doc(clinicId).get();
-//     if (!credentialsDoc.exists) {
-//         console.log(`Credenciais Twilio não encontradas para a clínica ${clinicId}`);
-//         return;
-//     }
-//     const credentials = credentialsDoc.data();
-//     const client = twilio(credentials.accountSid, credentials.authToken);
+        if (shouldSend) {
+            await sendMessage(patient, template, clinicId, patientId, templateId);
+            messageSent = true;
+            break; 
+        }
+    }
+    return messageSent;
+}
 
-//     const personalizedMessage = template.message.replace('{patientName}', patient.name);
+async function sendMessage(patient: Patient, template: Template, clinicId: string, patientId: string, templateId: string) {
+    const personalizedMessage = template.message.replace('{patientName}', patient.name);
+    const whatsappApiUrl = process.env.WHATSAPP_API_URL;
 
-//     try {
-//         const message = await client.messages.create({
-//             body: personalizedMessage,
-//             from: credentials.fromNumber, // Número Twilio da clínica
-//             to: patient.phone
-//         });
+    if (!whatsappApiUrl) {
+        console.error("Erro: A variável de ambiente WHATSAPP_API_URL não está definida.");
+        // Registra a falha no Firestore para que não tente reenviar indefinidamente
+        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
+            templateId: templateId,
+            status: 'failed',
+            error: 'WHATSAPP_API_URL não configurada no servidor.',
+            sentAt: new Date(),
+            to: patient.phone,
+            body: personalizedMessage
+        });
+        return;
+    }
 
-//         await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
-//             sid: message.sid,
-//             templateId: templateId,
-//             status: 'sent',
-//             sentAt: new Date(),
-//             to: patient.phone,
-//             body: personalizedMessage
-//         });
+    try {
+        // Chamada para a API da Meta/n8n via Axios
+        await axios.post(whatsappApiUrl, {
+            number: patient.phone,
+            message: personalizedMessage,
+        });
 
-//         console.log(`Mensagem enviada para ${patient.name} (SID: ${message.sid})`);
-//     } catch (error) {
-//         console.error(`Erro ao enviar mensagem para ${patient.name}:`, error);
-//         await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
-//             templateId: templateId,
-//             status: 'failed',
-//             error: error.message,
-//             sentAt: new Date(),
-//             to: patient.phone,
-//             body: personalizedMessage
-//         });
-//     }
-// }
+        // Registra o sucesso no Firestore
+        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
+            templateId: templateId,
+            status: 'sent',
+            sentAt: new Date(),
+            to: patient.phone,
+            body: personalizedMessage
+        });
+
+        console.log(`Mensagem para ${patient.name} (${patient.phone}) delegada para a API do WhatsApp.`);
+
+    } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message;
+        console.error(`Erro ao delegar mensagem para ${patient.name}:`, errorMessage);
+
+        // Registra a falha no Firestore
+        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
+            templateId: templateId,
+            status: 'failed',
+            error: errorMessage,
+            sentAt: new Date(),
+            to: patient.phone,
+            body: personalizedMessage
+        });
+    }
+}
