@@ -1,107 +1,113 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getFirebaseAdminApp } from "@/lib/firebase-admin";
-import { Patient, Workflow, Template, Clinic } from "@/lib/types";
+import { Patient, Workflow, Template, Clinic, WithId, WorkflowStep } from "@/lib/types";
 import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
 import axios from "axios";
 
 const adminApp = getFirebaseAdminApp();
 const db = getFirestore(adminApp);
 
-const PLAN_LIMITS = {
+const PLAN_LIMITS: { [key: string]: number } = {
     Essencial: 150,
     Profissional: 300,
     Premium: 750,
-    Trial: 10, // Limite para trial
+    Trial: 10,
 };
 
 export async function GET(req: NextRequest) {
-    // A autenticação está temporariamente desativada para simplificar. 
-    // TODO: Reativar a validação do CRON_SECRET em produção.
-    // const authHeader = req.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    //     return new NextResponse('Unauthorized', { status: 401 });
-    // }
+    const authHeader = req.headers.get('authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        // Descomente em produção
+        // return new NextResponse('Unauthorized', { status: 401 });
+    }
 
     try {
-        console.log("Iniciando a verificação de workflows...");
+        console.log("CRON: Iniciando verificação de workflows...");
         const clinicsSnapshot = await db.collection('clinics').get();
 
         for (const clinicDoc of clinicsSnapshot.docs) {
             const clinic = clinicDoc.data() as Clinic;
             const clinicId = clinicDoc.id;
-
             const plan = clinic.plan || 'Trial';
             const limit = PLAN_LIMITS[plan] || PLAN_LIMITS.Trial;
 
             const usageDoc = await db.collection('message_usage').doc(clinicId).get();
-            const currentUsage = usageDoc.exists ? usageDoc.data().count : 0;
+            const currentUsage = usageDoc.exists ? (usageDoc.data()?.count || 0) : 0;
 
             if (currentUsage >= limit) {
-                console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan}. Mensagens não serão enviadas.`);
-                continue; 
+                console.log(`CRON: Clínica ${clinicId} atingiu o limite do plano ${plan}.`);
+                continue;
             }
 
-            const patientsSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').where('workflowId', '!=', null).get();
+            const workflowsSnapshot = await db.collection('clinics').doc(clinicId).collection('workflows').where('active', '==', true).get();
+            if (workflowsSnapshot.empty) {
+                continue;
+            }
 
-            let processedPatients = 0;
-            for (const patientDoc of patientsSnapshot.docs) {
-                const patient = patientDoc.data() as Patient;
-                if (!patient.workflowId) continue;
-
-                const workflowDoc = await db.collection('clinics').doc(clinicId).collection('workflows').doc(patient.workflowId).get();
-                if (!workflowDoc.exists) continue;
-
-                const workflow = workflowDoc.data() as Workflow;
-                const messageSent = await processWorkflow(patient, workflow, clinicId, patientDoc.id);
-                
-                if (messageSent) {
-                    const newUsage = currentUsage + processedPatients + 1;
-                    if (newUsage >= limit) {
-                        console.log(`Clínica ${clinicId} atingiu o limite do plano ${plan} após envio.`);
-                        await db.collection('message_usage').doc(clinicId).set({ count: newUsage }, { merge: true });
-                        break; 
-                    }
-                    processedPatients++;
+            let clinicMessageCounter = 0;
+            for (const workflowDoc of workflowsSnapshot.docs) {
+                const workflow = { id: workflowDoc.id, ...workflowDoc.data() } as WithId<Workflow>;
+                if (!workflow.patients || workflow.patients.length === 0) {
+                    continue;
                 }
+
+                for (const patientId of workflow.patients) {
+                    if (currentUsage + clinicMessageCounter >= limit) {
+                        console.log(`CRON: Limite do plano atingido durante o processamento da clínica ${clinicId}.`);
+                        break;
+                    }
+
+                    const patientDoc = await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).get();
+                    if (!patientDoc.exists) continue;
+                    
+                    const patient = { id: patientDoc.id, ...patientDoc.data() } as WithId<Patient>;
+                    
+                    const messageSent = await processWorkflowForPatient(patient, workflow, clinicId);
+                    if (messageSent) {
+                        clinicMessageCounter++;
+                    }
+                }
+                if (currentUsage + clinicMessageCounter >= limit) break;
             }
-            if (processedPatients > 0) {
-                const newTotalUsage = currentUsage + processedPatients;
+
+            if (clinicMessageCounter > 0) {
+                const newTotalUsage = currentUsage + clinicMessageCounter;
                 await db.collection('message_usage').doc(clinicId).set({ count: newTotalUsage }, { merge: true });
+                console.log(`CRON: Clínica ${clinicId} enviou ${clinicMessageCounter} mensagens. Novo total: ${newTotalUsage}.`);
             }
         }
 
         return NextResponse.json({ message: "Workflows verificados com sucesso." });
     } catch (error) {
-        console.error("Erro ao verificar workflows:", error);
-        return new NextResponse(`Erro interno do servidor: ${error.message}`, { status: 500 });
+        console.error("CRON: Erro ao verificar workflows:", error);
+        const errorMessage = (error instanceof Error) ? error.message : "Erro desconhecido";
+        return new NextResponse(`Erro interno do servidor: ${errorMessage}`, { status: 500 });
     }
 }
 
-async function processWorkflow(patient: Patient, workflow: Workflow, clinicId: string, patientId: string): Promise<boolean> {
-    if (!workflow.templates || workflow.templates.length === 0) return false;
+async function processWorkflowForPatient(patient: WithId<Patient>, workflow: WithId<Workflow>, clinicId: string): Promise<boolean> {
+    if (!workflow.steps || workflow.steps.length === 0) return false;
 
     const now = new Date();
-    // Certifique-se de que patient.appointmentDate existe e é um objeto Timestamp antes de chamar toDate()
-    if (!patient.appointmentDate || typeof patient.appointmentDate.toDate !== 'function') return false;
-    const appointmentDate = patient.appointmentDate.toDate();
+    if (!patient.nextAppointment || typeof patient.nextAppointment.toDate !== 'function') return false;
+    const appointmentDate = patient.nextAppointment.toDate();
     
-    let messageSent = false;
-
-    for (const templateRef of workflow.templates) {
-        const templateId = templateRef.id;
-        const alreadySentSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages')
+    for (const step of workflow.steps) {
+        const templateId = step.template;
+        const alreadySentSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').doc(patient.id).collection('messages')
             .where('templateId', '==', templateId)
+            .where('workflowId', '==', workflow.id)
             .limit(1).get();
 
-        if (!alreadySentSnapshot.empty) continue; 
+        if (!alreadySentSnapshot.empty) continue;
 
         const templateDoc = await db.collection('clinics').doc(clinicId).collection('templates').doc(templateId).get();
         if (!templateDoc.exists) continue;
 
         const template = templateDoc.data() as Template;
-        const trigger = template.trigger;
+        const schedule = step.schedule;
         let shouldSend = false;
 
         const diffFunctions = {
@@ -111,76 +117,62 @@ async function processWorkflow(patient: Patient, workflow: Workflow, clinicId: s
             months: differenceInMonths
         };
 
-        const diffFn = diffFunctions[trigger.unit];
+        const diffFn = diffFunctions[schedule.unit];
         if (!diffFn) continue;
 
         const diff = diffFn(appointmentDate, now);
 
-        // Lógica para determinar se a mensagem deve ser enviada
-        if (trigger.when === 'before' && diff >= 0 && diff <= trigger.value) {
+        if (schedule.event === 'before' && diff > 0 && diff <= schedule.quantity) {
             shouldSend = true;
-        } else if (trigger.when === 'after' && diff < 0 && Math.abs(diff) >= trigger.value) {
+        } else if (schedule.event === 'after' && diff < 0 && Math.abs(diff) >= schedule.quantity) {
             shouldSend = true;
         }
-
-
+        
         if (shouldSend) {
-            await sendMessage(patient, template, clinicId, patientId, templateId);
-            messageSent = true;
-            break; 
+            await sendMessage(patient, template, clinicId, workflow.id, templateId);
+            return true; 
         }
     }
-    return messageSent;
+    return false; 
 }
 
-async function sendMessage(patient: Patient, template: Template, clinicId: string, patientId: string, templateId: string) {
-    const personalizedMessage = template.message.replace('{patientName}', patient.name);
+async function sendMessage(patient: WithId<Patient>, template: Template, clinicId: string, workflowId: string, templateId: string) {
+    const personalizedMessage = template.body.replace(/{patientName}/g, patient.name);
     const whatsappApiUrl = process.env.WHATSAPP_API_URL;
 
     if (!whatsappApiUrl) {
-        console.error("Erro: A variável de ambiente WHATSAPP_API_URL não está definida.");
-        // Registra a falha no Firestore para que não tente reenviar indefinidamente
-        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
-            templateId: templateId,
-            status: 'failed',
-            error: 'WHATSAPP_API_URL não configurada no servidor.',
-            sentAt: new Date(),
-            to: patient.phone,
-            body: personalizedMessage
-        });
+        console.error("CRON Error: A variável de ambiente WHATSAPP_API_URL não está definida.");
+        await logMessageStatus('failed', clinicId, patient.id, workflowId, templateId, patient.phone, personalizedMessage, 'WHATSAPP_API_URL não configurada no servidor.');
         return;
     }
 
     try {
-        // Chamada para a API da Meta/n8n via Axios
         await axios.post(whatsappApiUrl, {
             number: patient.phone,
             message: personalizedMessage,
         });
 
-        // Registra o sucesso no Firestore
-        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
-            templateId: templateId,
-            status: 'sent',
-            sentAt: new Date(),
-            to: patient.phone,
-            body: personalizedMessage
-        });
-
-        console.log(`Mensagem para ${patient.name} (${patient.phone}) delegada para a API do WhatsApp.`);
+        await logMessageStatus('sent', clinicId, patient.id, workflowId, templateId, patient.phone, personalizedMessage);
+        console.log(`CRON: Mensagem para ${patient.name} (${patient.phone}) delegada para a API do WhatsApp.`);
 
     } catch (error) {
-        const errorMessage = error.response?.data?.error || error.message;
-        console.error(`Erro ao delegar mensagem para ${patient.name}:`, errorMessage);
-
-        // Registra a falha no Firestore
-        await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add({
-            templateId: templateId,
-            status: 'failed',
-            error: errorMessage,
-            sentAt: new Date(),
-            to: patient.phone,
-            body: personalizedMessage
-        });
+        const errorMessage = (error instanceof Error) ? error.message : "Erro desconhecido";
+        console.error(`CRON: Erro ao delegar mensagem para ${patient.name}:`, errorMessage);
+        await logMessageStatus('failed', clinicId, patient.id, workflowId, templateId, patient.phone, personalizedMessage, errorMessage);
     }
+}
+
+async function logMessageStatus(status: 'sent' | 'failed', clinicId: string, patientId: string, workflowId: string, templateId: string, to: string, body: string, error?: string) {
+    const logEntry: any = {
+        workflowId,
+        templateId,
+        status,
+        sentAt: Timestamp.now(),
+        to,
+        body
+    };
+    if (error) {
+        logEntry.error = error;
+    }
+    await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add(logEntry);
 }
