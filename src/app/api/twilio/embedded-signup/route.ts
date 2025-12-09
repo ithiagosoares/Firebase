@@ -1,61 +1,49 @@
 
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { getFirebaseAdminApp } from "@/lib/firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
-import twilio from "twilio";
+
+// TODO: REMOVER ESTE ARQUIVO APÓS A MIGRAÇÃO COMPLETA PARA A META API
+// import { getFirebaseAdminApp } from "@/lib/firebase-admin";
+// import { getFirestore } from "firebase-admin/firestore";
+// import twilio from "twilio";
 
 export async function POST(request: Request) {
-    try {
-        // MOVIDO PARA DENTRO: Garante que qualquer erro de inicialização seja capturado.
-        const adminApp = getFirebaseAdminApp();
-        const db = getFirestore(adminApp);
+    return NextResponse.json({ message: "Endpoint desativado." });
+    // try {
+    //     // Extrair o ID do usuário da Clerk (exemplo, ajuste conforme necessário)
+    //     const { userId } = await request.json(); // Supondo que o ID do usuário seja enviado no corpo da requisição
 
-        const { userId } = await auth();
+    //     if (!userId) {
+    //         return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+    //     }
 
-        if (!userId) {
-            return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
-        }
+    //     const firestore = getFirestore(getFirebaseAdminApp());
 
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const callbackUrl = `${process.env.NEXT_PUBLIC_URL}/api/twilio/callback`;
+    //     // Obter as credenciais do Twilio do Firestore
+    //     const credentialsDoc = await firestore.collection('twilio_credentials').doc(userId).get();
+    //     if (!credentialsDoc.exists) {
+    //         return NextResponse.json({ error: "Twilio credentials not found for this user" }, { status: 404 });
+    //     }
+    //     const credentials = credentialsDoc.data();
+    //     const accountSid = credentials.accountSid;
+    //     const authToken = credentials.authToken;
 
-        if (!accountSid || !authToken || !callbackUrl) {
-            console.error("CRÍTICO: Credenciais da Twilio ou URL da aplicação não estão definidas no ambiente.");
-            return NextResponse.json({ error: "O serviço de conexão não está configurado corretamente no servidor." }, { status: 500 });
-        }
+    //     const client = twilio(accountSid, authToken);
 
-        const twilioClient = twilio(accountSid, authToken);
+    //     // Este é um exemplo de como você pode usar o cliente Twilio.
+    //     // A funcionalidade específica de "embedded signup" pode exigir uma lógica diferente.
+    //     // O código abaixo é um placeholder para demonstrar o uso do cliente.
 
-        const subaccount = await twilioClient.api.v2010.accounts.create({
-            friendlyName: `Subconta para ${userId}`,
-        });
+    //     // Exemplo: Listar números de telefone associados à conta
+    //     const phoneNumbers = await client.incomingPhoneNumbers.list({ limit: 5 });
 
-        console.log(`Subconta criada: ${subaccount.sid} para o usuário ${userId}`);
+    //     return NextResponse.json({
+    //         message: "Successfully authenticated with Twilio and fetched phone numbers.",
+    //         phoneNumbers: phoneNumbers.map(p => p.phoneNumber)
+    //     });
 
-        const userDocRef = db.doc(`clinics/${userId}`);
-        await userDocRef.set({ 
-            twilioSubaccountSid: subaccount.sid,
-            isTwilioConnected: false
-        }, { merge: true });
-
-        const fullCallbackUrl = `${callbackUrl}?subaccountSid=${subaccount.sid}`;
-
-        const encodedUrl = new URL("https://www.twilio.com/console/signup/embedded");
-        encodedUrl.searchParams.append("frameUrl", fullCallbackUrl);
-        encodedUrl.searchParams.append("gated", "true");
-
-        return NextResponse.json({ signupUrl: encodedUrl.toString() });
-
-    } catch (error: any) {
-        console.error("### ERRO NO ENDPOINT /api/twilio/embedded-signup ###:", error);
-        return NextResponse.json(
-            { 
-                error: "Ocorreu um erro ao tentar criar la conexión com a Twilio.",
-                details: error.message 
-            },
-            { status: 500 }
-        );
-    }
+    // } catch (error) {
+    //     console.error("Error in Twilio embedded signup:", error);
+    //     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    //     return NextResponse.json({ error: "Internal Server Error", details: errorMessage }, { status: 500 });
+    // }
 }
