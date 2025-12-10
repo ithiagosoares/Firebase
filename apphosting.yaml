@@ -3,14 +3,12 @@
 backend:
   # O diretório que contém o código do seu servidor (package.json, index.js, etc.)
   root: whatsapp
+  # Adicionando este comentário para forçar um rebuild completo. Versão: v1.3
 
-# Define as variáveis de ambiente para o backend do App Hosting.
 env:
   - variable: CRON_SECRET
     secret: CRON_SECRET
-  # Fornece a chave de serviço do Firebase para o Admin SDK
   - variable: FIREBASE_SERVICE_ACCOUNT_KEY
     secret: FIREBASE_SERVICE_ACCOUNT_KEY
-  # Token para verificação do Webhook da Meta
   - variable: META_WEBHOOK_VERIFY_TOKEN
     secret: META_WEBHOOK_VERIFY_TOKEN
