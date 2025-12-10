@@ -11,7 +11,7 @@
     },
     "rewrites": [
       {
-        "source": "/api/meta/**",
+        "source": "/whatsapp-api/**",
         "run": {
           "serviceId": "vitallink-whatsapp",
           "region": "southamerica-east1"
