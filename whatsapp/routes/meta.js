@@ -11,12 +11,17 @@ router.get('/webhook', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
+  // --- DEBUGGING ---
+  console.log("Token recebido da Meta:", token);
+  console.log("Token esperado do ambiente (process.env):", process.env.META_WEBHOOK_VERIFY_TOKEN);
+  // --- FIM DO DEBUGGING ---
+
   // Verifique se o token de verificação enviado pela Meta é o mesmo que você configurou
   if (mode === 'subscribe' && token === process.env.META_WEBHOOK_VERIFY_TOKEN) {
     console.log('WEBHOOK_VERIFIED');
     res.status(200).send(challenge);
   } else {
-    console.error('Falha na verificação do webhook. Tokens não correspondem.');
+    console.error('Falha na verificação do webhook. Verifique os tokens acima.');
     res.sendStatus(403);
   }
 });
