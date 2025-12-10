@@ -48,7 +48,7 @@ next-env.d.ts
 database-debug.log
 firestore-debug.log
 storage-debug.log
-firebase.json
+
 .firebaserc
 
 # Railway
