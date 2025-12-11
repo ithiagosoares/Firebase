@@ -1,6 +1,7 @@
 {
   "name": "nextn",
   "version": "0.1.0",
+  "description": "Forcing cache bust to refresh dependencies",
   "private": true,
   "scripts": {
     "dev": "next dev -p 9002",
