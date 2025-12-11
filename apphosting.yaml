@@ -1,10 +1,9 @@
 
-# Especifica o diretório raiz do código do seu backend.
-backend:
-  # O diretório que contém o código do seu servidor (package.json, index.js, etc.)
-  root: whatsapp
-  # Adicionando este comentário para forçar um rebuild completo. Versão: v1.3
-
+run:
+  - serviceId: main
+    root: .
+  - serviceId: vitallink-webhook
+    root: whatsapp
 env:
   - variable: CRON_SECRET
     secret: CRON_SECRET
