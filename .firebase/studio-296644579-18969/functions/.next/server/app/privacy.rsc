@@ -1,0 +1,24 @@
+1:"$Sreact.fragment"
+2:I[91896,["2992","static/chunks/bc9e92e6-c54c01bb44c09e30.js","7138","static/chunks/7c86ec74-96365ad929f05e89.js","9251","static/chunks/9251-6bb52217ef51e311.js","1659","static/chunks/1659-f93403d5bd582246.js","1896","static/chunks/1896-91c646bbf10430e4.js","9097","static/chunks/app/(auth)/layout-279ef13cb1ec27d6.js"],"FirebaseClientProvider"]
+3:I[9766,[],""]
+4:I[61639,["7112","static/chunks/7112-b947a0408f7b07bb.js","8039","static/chunks/app/error-996aa9b906d05b6d.js"],"default"]
+5:I[98924,[],""]
+6:I[34204,["7112","static/chunks/7112-b947a0408f7b07bb.js","7353","static/chunks/7353-3fa9198479d29ea7.js","4345","static/chunks/app/not-found-82d874f3e40c32ab.js"],"default"]
+7:I[18516,["2992","static/chunks/bc9e92e6-c54c01bb44c09e30.js","7138","static/chunks/7c86ec74-96365ad929f05e89.js","7112","static/chunks/7112-b947a0408f7b07bb.js","9251","static/chunks/9251-6bb52217ef51e311.js","1659","static/chunks/1659-f93403d5bd582246.js","955","static/chunks/955-b2e2681c62ebdbf6.js","9118","static/chunks/9118-c936a48018427d4d.js","2169","static/chunks/2169-3bcdc7edab4109c2.js","1896","static/chunks/1896-91c646bbf10430e4.js","7177","static/chunks/app/layout-b5e47f3238b3dc07.js"],"Toaster"]
+8:I[81959,[],"ClientPageRoot"]
+9:I[65736,["7112","static/chunks/7112-b947a0408f7b07bb.js","955","static/chunks/955-b2e2681c62ebdbf6.js","7353","static/chunks/7353-3fa9198479d29ea7.js","531","static/chunks/531-67e2b78dd47995ea.js","8408","static/chunks/8408-f20f0c1a5cd323e2.js","3670","static/chunks/3670-6b38fbbe2d2da3d0.js","9877","static/chunks/app/privacy/page-77b8c5ff0b9892bf.js"],"default"]
+c:I[24431,[],"OutletBoundary"]
+e:I[15278,[],"AsyncMetadataOutlet"]
+10:I[24431,[],"ViewportBoundary"]
+12:I[24431,[],"MetadataBoundary"]
+13:"$Sreact.suspense"
+15:I[57150,[],""]
+:HL["/_next/static/css/8ac2f3c9b083c05e.css","style"]
+0:{"P":null,"b":"lZI7oWc8W6VLqPbzVoysb","p":"","c":["","privacy"],"i":false,"f":[[["",{"children":["privacy",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/8ac2f3c9b083c05e.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"pt-BR","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","link",null,{"rel":"icon","href":"https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/favicon.ico?alt=media&token=b6a9fab3-adeb-4136-a20c-b7764c41632b"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap","rel":"stylesheet"}]]}],["$","body",null,{"className":"font-body antialiased","children":[["$","$L2",null,{"children":["$","$L3",null,{"parallelRouterKey":"children","error":"$4","errorStyles":[],"errorScripts":[],"template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$L6",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}],["$","$L7",null,{}]]}]]}]]}],{"children":["privacy",["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L8",null,{"Component":"$9","searchParams":{},"params":{},"promises":["$@a","$@b"]}],null,["$","$Lc",null,{"children":["$Ld",["$","$Le",null,{"promise":"$@f"}]]}]]}],{},null,false]},null,false]},null,false],["$","$1","h",{"children":[null,[["$","$L10",null,{"children":"$L11"}],null],["$","$L12",null,{"children":["$","div",null,{"hidden":true,"children":["$","$13",null,{"fallback":null,"children":"$L14"}]}]}]]}],false]],"m":"$undefined","G":["$15",[]],"s":false,"S":true}
+a:{}
+b:"$0:f:0:1:2:children:2:children:1:props:children:0:props:params"
+11:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+d:null
+16:I[80622,[],"IconMark"]
+f:{"metadata":[["$","title","0",{"children":"VitalLink | Aumente o Retorno de Pacientes com Automação"}],["$","meta","1",{"name":"description","content":"Pare de perder pacientes e faturamento. A VitalLink automatiza a confirmação de consultas e reativa pacientes inativos via WhatsApp. Comece a usar em 5 minutos."}],["$","link","2",{"rel":"icon","href":"/favicon.ico","type":"image/x-icon","sizes":"16x16"}],["$","link","3",{"rel":"icon","href":"/icon?367154ed8ec1be60","alt":"$undefined","type":"image/png","sizes":"32x32"}],["$","$L16","4",{}]],"error":null,"digest":"$undefined"}
+14:"$f:metadata"
