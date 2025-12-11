@@ -1,9 +1,7 @@
 
 run:
-  - serviceId: main
-    root: .
-  - serviceId: vitallink-webhook
-    root: whatsapp
+  serviceId: main
+  root: .
 env:
   - variable: CRON_SECRET
     secret: CRON_SECRET

@@ -1,4 +1,4 @@
-{
+Ok.{
   "hosting": {
     "source": ".",
     "ignore": [
@@ -9,15 +9,6 @@
     "frameworksBackend": {
       "region": "southamerica-east1"
     },
-    "rewrites": [
-      {
-        "source": "/whatsapp-api/**",
-        "run": {
-          "serviceId": "vitallink-whatsapp",
-          "region": "southamerica-east1"
-        }
-      }
-    ],
     "redirects": [
       {
         "source": "/:path*",
