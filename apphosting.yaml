@@ -5,4 +5,6 @@ secretEnvironmentVariables:
     secret: WHATSAPP_PHONE_NUMBER_ID
   - key: META_WEBHOOK_VERIFY_TOKEN
     secret: META_WEBHOOK_VERIFY_TOKEN
+  - key: FIREBASE_SERVICE_ACCOUNT_KEY # Adicionado para o processo de build
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
 instanceSize: cpu-1
