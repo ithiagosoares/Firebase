@@ -63,8 +63,8 @@ async function sendMessage(to: string, text: string) {
 // Rota para receber eventos do Webhook (POST)
 // Forçando um novo deploy para carregar os segredos atualizados.
 export async function POST(request: NextRequest) {
-  // LINHA DE DEPURAÇÃO ADICIONADA:
-  console.log("VARIÁVEIS DE AMBIENTE:", process.env);
+  // LINHA DE DEPURAÇÃO MELHORADA:
+  console.log("AMBIENTE (JSON):", JSON.stringify(process.env, null, 2));
 
   const body = await request.json();
   console.log('Evento bruto do webhook recebido:', JSON.stringify(body, null, 2));
