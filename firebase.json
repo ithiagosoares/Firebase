@@ -44,22 +44,5 @@
         ]
       }
     ]
-  },
-  "apphosting": {
-    "secretEnvironmentVariables": [
-      {
-        "key": "WHATSAPP_ACCESS_TOKEN",
-        "secret": "WHATSAPP_ACCESS_TOKEN"
-      },
-      {
-        "key": "WHATSAPP_PHONE_NUMBER_ID",
-        "secret": "WHATSAPP_PHONE_NUMBER_ID"
-      },
-      {
-        "key": "META_WEBHOOK_VERIFY_TOKEN",
-        "secret": "META_WEBHOOK_VERIFY_TOKEN"
-      }
-    ],
-    "instanceSize": "cpu-1"
   }
 }

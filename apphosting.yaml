@@ -1,11 +1,8 @@
-
-run:
-  serviceId: main
-  root: .
-env:
-  - variable: CRON_SECRET
-    secret: CRON_SECRET
-  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
-    secret: FIREBASE_SERVICE_ACCOUNT_KEY
-  - variable: META_WEBHOOK_VERIFY_TOKEN
+secretEnvironmentVariables:
+  - key: WHATSAPP_ACCESS_TOKEN
+    secret: WHATSAPP_ACCESS_TOKEN
+  - key: WHATSAPP_PHONE_NUMBER_ID
+    secret: WHATSAPP_PHONE_NUMBER_ID
+  - key: META_WEBHOOK_VERIFY_TOKEN
     secret: META_WEBHOOK_VERIFY_TOKEN
+instanceSize: cpu-1
