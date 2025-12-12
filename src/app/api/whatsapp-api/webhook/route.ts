@@ -17,6 +17,49 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// ===== NOVA FUNÇÃO: ENVIAR MENSAGENS =====
+// Esta função se conecta à API da Meta para enviar uma mensagem.
+async function sendMessage(to: string, text: string) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  if (!phoneNumberId || !accessToken) {
+    console.error("ERRO CRÍTICO: As variáveis de ambiente WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN não estão configuradas. A mensagem não pode ser enviada.");
+    return;
+  }
+
+  const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
+  
+  const payload = {
+    messaging_product: "whatsapp",
+    to: to,
+    type: "text",
+    text: { body: text },
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('Erro ao enviar mensagem de resposta via WhatsApp:', JSON.stringify(result, null, 2));
+    } else {
+      console.log('Mensagem de resposta enviada com sucesso:', result);
+    }
+  } catch (error) {
+    console.error('Erro de rede ou fetch ao tentar enviar mensagem:', error);
+  }
+}
+
+
 // Rota para receber eventos do Webhook (POST)
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -24,47 +67,31 @@ export async function POST(request: NextRequest) {
 
   try {
     // ETAPA 1: EXTRAIR AS INFORMAÇÕES DA MENSAGEM
-    // O objeto do webhook pode ser complexo. Esta lógica navega com segurança até os dados que importam.
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    // Se não for uma mensagem de texto ou se não houver dados, ignoramos o evento.
     if (!message || message.type !== 'text') {
       console.log('Evento ignorado (não é uma mensagem de texto).');
       return new NextResponse(null, { status: 200 });
     }
 
-    const from = message.from; // Número de telefone de quem enviou. Ex: "5511999998888"
-    const text = message.text.body; // O conteúdo da mensagem. Ex: "Olá, gostaria de agendar uma consulta."
+    const from = message.from; // Número de telefone de quem enviou.
+    const text = message.text.body; // O conteúdo da mensagem.
 
     console.log(`MENSAGEM EXTRAÍDA -> De: ${from}, Texto: "${text}"`);
 
-    // ETAPA 2: LÓGICA DE NEGÓCIO (O CÉREBRO DA SUA APLICAÇÃO)
-    // É aqui que a mágica acontece. O que você faz com a mensagem?
-
-    // **PRÓXIMOS PASSOS PARA VOCÊ IMPLEMENTAR:**
-    // 1. **Consultar Paciente:** Verifique no seu banco de dados se o número `from` já pertence a um paciente cadastrado.
-    //
-    // 2. **Analisar Intenção:** Use 'if/else' ou uma IA para entender o que o `text` significa.
-    //    - O paciente quer agendar? `if (text.toLowerCase().includes('agendar')) { ... }`
-    //    - Quer confirmar uma consulta? `if (text.toLowerCase().includes('confirmar')) { ... }`
-    //    - É uma pergunta geral?
-    //
-    // 3. **Executar Ação:** Com base na intenção, faça algo. Salve a confirmação no banco, procure horários livres, etc.
-    //
-    // 4. **Preparar Resposta:** Construa a mensagem de texto que você enviará de volta.
-    //    - `const resposta = 'Consulta confirmada com sucesso!';`
-    //
-    // 5. **Enviar Resposta:** Use a API de envio de mensagens da Meta para mandar a `resposta` para o número `from`.
-    //    (Este será o nosso próximo grande passo juntos, quando você estiver pronto).
-
+    // ETAPA 2: LÓGICA DE NEGÓCIO E RESPOSTA
+    
+    // Para testar, vamos criar um "eco". O sistema responderá com o que recebeu.
+    const responseText = `Recebemos sua mensagem: "${text}"`;
+    
+    // Chama a função para enviar a resposta de volta ao usuário
+    await sendMessage(from, responseText);
 
   } catch (error) {
     console.error('Erro ao processar o webhook:', error);
-    // Mesmo em caso de erro, retornamos 200 para a Meta não ficar reenviando o evento.
     return new NextResponse(null, { status: 200 });
   }
 
   // ETAPA 3: CONFIRMAR RECEBIMENTO
-  // Enviamos uma resposta 200 OK para a Meta para dizer "Recebi, obrigado. Não precisa enviar de novo."
   return new NextResponse(null, { status: 200 });
 }
