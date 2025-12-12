@@ -1,3 +1,6 @@
+environmentVariables:
+  DEBUG_VAR: "Hello from apphosting.yaml"
+
 secretEnvironmentVariables:
   - key: WHATSAPP_ACCESS_TOKEN
     secret: WHATSAPP_ACCESS_TOKEN
@@ -5,6 +8,15 @@ secretEnvironmentVariables:
     secret: WHATSAPP_PHONE_NUMBER_ID
   - key: META_WEBHOOK_VERIFY_TOKEN
     secret: META_WEBHOOK_VERIFY_TOKEN
-  - key: FIREBASE_SERVICE_ACCOUNT_KEY # Adicionado para o processo de build
+  - key: FIREBASE_SERVICE_ACCOUNT_KEY
     secret: FIREBASE_SERVICE_ACCOUNT_KEY
+  - key: CRON_SECRET
+    secret: CRON_SECRET
+  - key: STRIPE_SECRET_KEY
+    secret: STRIPE_SECRET_KEY
+  - key: STRIPE_WEBHOOK_SECRET
+    secret: STRIPE_WEBHOOK_SECRET
+  - key: WHATSAPP_API_URL
+    secret: WHATSAPP_API_URL
+
 instanceSize: cpu-1

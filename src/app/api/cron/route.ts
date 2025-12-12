@@ -1,10 +1,19 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
-import { db } from "@/lib/firebase-admin"; // Importa diretamente o getter `db`
+import { db } from "@/lib/firebase-admin";
 import { Patient, Workflow, Template, Clinic, WithId } from "@/lib/types";
 import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
 import axios from "axios";
+
+// ============================================================================================
+// 🔥 MODO DE DEPURACÃO
+// ============================================================================================
+console.log("--- INICIANDO MODO DE DEPURACÃO DE VARIÁVEIS DE AMBIENTE ---");
+console.log(`Valor de DEBUG_VAR: ${process.env.DEBUG_VAR}`);
+console.log("Chaves disponíveis em process.env:", Object.keys(process.env));
+console.log("--- FIM DO MODO DE DEPURACÃO ---");
+// ============================================================================================
 
 const PLAN_LIMITS: { [key: string]: number } = {
     Essencial: 150,
@@ -16,15 +25,15 @@ const PLAN_LIMITS: { [key: string]: number } = {
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // Descomente em produção
         // return new NextResponse('Unauthorized', { status: 401 });
     }
 
     try {
         console.log("CRON: Iniciando verificação de workflows...");
-        const clinicsSnapshot = await db().collection('clinics').get(); // Usa db() para obter a instância do Firestore
+        const clinicsSnapshot = await db().collection('clinics').get();
 
         for (const clinicDoc of clinicsSnapshot.docs) {
+            // ... (o resto do seu código permanece igual)
             const clinic = clinicDoc.data() as Clinic;
             const clinicId = clinicDoc.id;
             const plan = clinic.plan || 'Trial';
