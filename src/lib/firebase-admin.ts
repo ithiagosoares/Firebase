@@ -9,7 +9,10 @@ interface FirebaseAdminCredentials {
   privateKey: string;
 }
 
-export function getFirebaseAdminApp() {
+// Armazena a app inicializada para evitar múltiplas inicializações
+let adminApp: admin.app.App;
+
+function initializeAdminApp() {
   const alreadyCreatedApp = admin.apps.find(
     (app) => app?.name === FIREBASE_ADMIN_APP_NAME
   );
@@ -18,7 +21,6 @@ export function getFirebaseAdminApp() {
     return alreadyCreatedApp;
   }
 
-  // A variável agora é esperada em formato Base64
   const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
   if (!serviceAccountBase64) {
@@ -26,10 +28,7 @@ export function getFirebaseAdminApp() {
   }
 
   try {
-    // PASSO 1: Decodificar a string Base64 para obter o JSON original
     const serviceAccountString = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
-    
-    // PASSO 2: Analisar o JSON decodificado
     const credentials = JSON.parse(serviceAccountString) as FirebaseAdminCredentials;
 
     const app = admin.initializeApp(
@@ -38,7 +37,6 @@ export function getFirebaseAdminApp() {
       },
       FIREBASE_ADMIN_APP_NAME
     );
-
     return app;
   } catch (error: any) {
     console.error("### ERRO CRÍTICO AO INICIALIZAR FIREBASE ADMIN ###");
@@ -52,15 +50,17 @@ export function getFirebaseAdminApp() {
   }
 }
 
+function getAdminApp() {
+    if (!adminApp) {
+        adminApp = initializeAdminApp();
+    }
+    return adminApp;
+}
+
 // ============================================================================================
-// 🔥 EXPORTAÇÕES CONVENIENTES
+// 🔥 EXPORTAÇÕES CONVENIENTES (LAZY INITIALIZATION)
 // ============================================================================================
 
-// Obtém a instância do app Admin
-const adminApp = getFirebaseAdminApp();
-
-// Exporta a instância do Firestore para uso global
-export const db = adminApp.firestore();
-
-// Exporta a instância do Auth para uso futuro, se necessário
-export const auth = adminApp.auth();
+// Agora exportamos getters que inicializam a app apenas quando necessário.
+export const db = () => getAdminApp().firestore();
+export const auth = () => getAdminApp().auth();

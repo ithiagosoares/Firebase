@@ -1,13 +1,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
-import { getFirebaseAdminApp } from "@/lib/firebase-admin";
-import { Patient, Workflow, Template, Clinic, WithId, WorkflowStep } from "@/lib/types";
+import { Timestamp } from "firebase-admin/firestore";
+import { db } from "@/lib/firebase-admin"; // Importa diretamente o getter `db`
+import { Patient, Workflow, Template, Clinic, WithId } from "@/lib/types";
 import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
 import axios from "axios";
-
-const adminApp = getFirebaseAdminApp();
-const db = getFirestore(adminApp);
 
 const PLAN_LIMITS: { [key: string]: number } = {
     Essencial: 150,
@@ -25,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     try {
         console.log("CRON: Iniciando verificação de workflows...");
-        const clinicsSnapshot = await db.collection('clinics').get();
+        const clinicsSnapshot = await db().collection('clinics').get(); // Usa db() para obter a instância do Firestore
 
         for (const clinicDoc of clinicsSnapshot.docs) {
             const clinic = clinicDoc.data() as Clinic;
@@ -33,7 +30,7 @@ export async function GET(req: NextRequest) {
             const plan = clinic.plan || 'Trial';
             const limit = PLAN_LIMITS[plan] || PLAN_LIMITS.Trial;
 
-            const usageDoc = await db.collection('message_usage').doc(clinicId).get();
+            const usageDoc = await db().collection('message_usage').doc(clinicId).get();
             const currentUsage = usageDoc.exists ? (usageDoc.data()?.count || 0) : 0;
 
             if (currentUsage >= limit) {
@@ -41,7 +38,7 @@ export async function GET(req: NextRequest) {
                 continue;
             }
 
-            const workflowsSnapshot = await db.collection('clinics').doc(clinicId).collection('workflows').where('active', '==', true).get();
+            const workflowsSnapshot = await db().collection('clinics').doc(clinicId).collection('workflows').where('active', '==', true).get();
             if (workflowsSnapshot.empty) {
                 continue;
             }
@@ -59,7 +56,7 @@ export async function GET(req: NextRequest) {
                         break;
                     }
 
-                    const patientDoc = await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).get();
+                    const patientDoc = await db().collection('clinics').doc(clinicId).collection('patients').doc(patientId).get();
                     if (!patientDoc.exists) continue;
                     
                     const patient = { id: patientDoc.id, ...patientDoc.data() } as WithId<Patient>;
@@ -74,7 +71,7 @@ export async function GET(req: NextRequest) {
 
             if (clinicMessageCounter > 0) {
                 const newTotalUsage = currentUsage + clinicMessageCounter;
-                await db.collection('message_usage').doc(clinicId).set({ count: newTotalUsage }, { merge: true });
+                await db().collection('message_usage').doc(clinicId).set({ count: newTotalUsage }, { merge: true });
                 console.log(`CRON: Clínica ${clinicId} enviou ${clinicMessageCounter} mensagens. Novo total: ${newTotalUsage}.`);
             }
         }
@@ -96,14 +93,14 @@ async function processWorkflowForPatient(patient: WithId<Patient>, workflow: Wit
     
     for (const step of workflow.steps) {
         const templateId = step.template;
-        const alreadySentSnapshot = await db.collection('clinics').doc(clinicId).collection('patients').doc(patient.id).collection('messages')
+        const alreadySentSnapshot = await db().collection('clinics').doc(clinicId).collection('patients').doc(patient.id).collection('messages')
             .where('templateId', '==', templateId)
             .where('workflowId', '==', workflow.id)
             .limit(1).get();
 
         if (!alreadySentSnapshot.empty) continue;
 
-        const templateDoc = await db.collection('clinics').doc(clinicId).collection('templates').doc(templateId).get();
+        const templateDoc = await db().collection('clinics').doc(clinicId).collection('templates').doc(templateId).get();
         if (!templateDoc.exists) continue;
 
         const template = templateDoc.data() as Template;
@@ -174,5 +171,5 @@ async function logMessageStatus(status: 'sent' | 'failed', clinicId: string, pat
     if (error) {
         logEntry.error = error;
     }
-    await db.collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add(logEntry);
+    await db().collection('clinics').doc(clinicId).collection('patients').doc(patientId).collection('messages').add(logEntry);
 }
