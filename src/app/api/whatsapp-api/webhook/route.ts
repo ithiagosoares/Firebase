@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'; // Força o runtime do Node.js para garantir acesso ao process.env
 
 import { NextRequest, NextResponse } from 'next/server';
 
