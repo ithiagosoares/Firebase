@@ -1,8 +1,7 @@
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
-import { getFirebaseAdminApp } from "@/lib/firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
+import { db } from "@/lib/firebase-admin"; // Alterado: Importa o getter 'db'
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
 
       if (!userId || !customerId) {
         console.error("❌ Faltando userId (client_reference_id) ou customerId na sessão de checkout.");
-        // Retorna 200 para a Stripe para não reenviar, mas registra o erro.
         return new Response("Dados essenciais ausentes na sessão.", { status: 200 });
       }
 
@@ -64,12 +62,9 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const adminApp = getFirebaseAdminApp();
-        const db = getFirestore(adminApp);
-
-        const clinicRef = db.collection("clinics").doc(userId);
+        const clinicRef = db().collection("clinics").doc(userId); // Alterado: usa db()
         
-        await db.runTransaction(async (transaction) => {
+        await db().runTransaction(async (transaction) => { // Alterado: usa db()
             transaction.set(clinicRef, {
                 plan: planName,
                 monthlyUsage: 0, // Zera o contador de uso no novo ciclo
@@ -105,11 +100,8 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            const adminApp = getFirebaseAdminApp();
-            const db = getFirestore(adminApp);
-
             // Encontra a clínica pelo ID do cliente Stripe
-            const clinicsQuery = db.collection('clinics').where('stripeCustomerId', '==', customerId).limit(1);
+            const clinicsQuery = db().collection('clinics').where('stripeCustomerId', '==', customerId).limit(1); // Alterado: usa db()
             const clinicSnapshot = await clinicsQuery.get();
 
             if (clinicSnapshot.empty) {
