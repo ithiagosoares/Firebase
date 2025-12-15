@@ -15,19 +15,7 @@ const PLAN_LIMITS: { [key: string]: number } = {
 
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
-    const expectedSecret = process.env.CRON_SECRET;
-
-    // =================================================================================
-    //  INÍCIO DO CÓDIGO DE DEPURAÇÃO TEMPORÁRIO
-    // =================================================================================
-    console.log(`[DEBUG] Comprimento do cabeçalho 'Authorization' recebido: ${authHeader?.length}`);
-    console.log(`[DEBUG] Comprimento do 'CRON_SECRET' esperado (process.env): ${expectedSecret?.length}`);
-    // =================================================================================
-    //  FIM DO CÓDIGO DE DEPURAÇÃO
-    // =================================================================================
-
-    if (authHeader !== `Bearer ${expectedSecret}`) {
-        console.error(`[AUTH] Falha na autorização. O cabeçalho não corresponde ao CRON_SECRET.`);
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
 

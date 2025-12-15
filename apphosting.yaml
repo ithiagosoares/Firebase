@@ -1,30 +1,22 @@
-# Configurações do ambiente de execução
-runConfig:
-  # Especifica os recursos da instância
-  cpu: 1
 
-  # Define os segredos que serão injetados como variáveis de ambiente
-  # O nome do 'secret' deve corresponder ao nome do segredo no Google Secret Manager.
-  # A 'environmentVariable' é o nome que a sua aplicação usará (process.env.NOME_DA_VARIAVEL).
+# The apphosting.yaml schema is defined here:
+# https://firebase.google.com/docs/hosting/app-hosting/apphosting-yaml-schema
+run:
+  build:
+    - npm i
+    - npm run build
+  start: npm run start
+backend:
+  # The required resource that the app will have access to.
+  # These are App Hosting managed secrets and will be created for you.
   secrets:
-    - secret: FIREBASE_SERVICE_ACCOUNT_KEY
-      environmentVariable: FIREBASE_SERVICE_ACCOUNT_KEY
-    - secret: WHATSAPP_ACCESS_TOKEN
-      environmentVariable: WHATSAPP_ACCESS_TOKEN
-    - secret: WHATSAPP_PHONE_NUMBER_ID
-      environmentVariable: WHATSAPP_PHONE_NUMBER_ID
-    - secret: META_WEBHOOK_VERIFY_TOKEN
-      environmentVariable: META_WEBHOOK_VERIFY_TOKEN
-    - secret: CRON_SECRET
-      environmentVariable: CRON_SECRET
-    - secret: STRIPE_SECRET_KEY
-      environmentVariable: STRIPE_SECRET_KEY
-    - secret: STRIPE_WEBHOOK_SECRET
-      environmentVariable: STRIPE_WEBHOOK_SECRET
-    - secret: WHATSAPP_API_URL
-      environmentVariable: WHATSAPP_API_URL
-
-# Variáveis de ambiente normais (não secretas)
-env:
-  - variable: DEBUG_VAR
-    value: "Hello from the corrected apphosting.yaml"
+    - FIREBASE_SERVICE_ACCOUNT_KEY
+    - CRON_JOB_SECRET
+  # The environment variables that will be available to your app.
+  # The value of these variables will be the secrets you specified above.
+  env:
+    - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+      secret: FIREBASE_SERVICE_ACCOUNT_KEY
+    # The CRON_SECRET is used to authenticate requests from Cloud Scheduler.
+    - variable: CRON_SECRET
+      secret: CRON_JOB_SECRET
