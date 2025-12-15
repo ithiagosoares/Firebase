@@ -2,3 +2,6 @@
 [00:01:00.142] Server  LOG      ○ Compiling / ...
 [00:02:01.841] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[01:10:02.909] Server  LOG        Reload env: .env.local
+[01:10:26.202] Server  LOG        Reload env: .env.local
+[01:10:28.814] Server  LOG        Reload env: .env.local
