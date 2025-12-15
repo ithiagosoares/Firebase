@@ -1,22 +1,30 @@
-environmentVariables:
-  DEBUG_VAR: "Hello from apphosting.yaml"
+# Configurações do ambiente de execução
+runConfig:
+  # Especifica os recursos da instância
+  cpu: 1
 
-secretEnvironmentVariables:
-  - key: WHATSAPP_ACCESS_TOKEN
-    secret: WHATSAPP_ACCESS_TOKEN
-  - key: WHATSAPP_PHONE_NUMBER_ID
-    secret: WHATSAPP_PHONE_NUMBER_ID
-  - key: META_WEBHOOK_VERIFY_TOKEN
-    secret: META_WEBHOOK_VERIFY_TOKEN
-  - key: FIREBASE_SERVICE_ACCOUNT_KEY
-    secret: FIREBASE_SERVICE_ACCOUNT_KEY
-  - key: CRON_SECRET
-    secret: CRON_SECRET
-  - key: STRIPE_SECRET_KEY
-    secret: STRIPE_SECRET_KEY
-  - key: STRIPE_WEBHOOK_SECRET
-    secret: STRIPE_WEBHOOK_SECRET
-  - key: WHATSAPP_API_URL
-    secret: WHATSAPP_API_URL
+  # Define os segredos que serão injetados como variáveis de ambiente
+  # O nome do 'secret' deve corresponder ao nome do segredo no Google Secret Manager.
+  # A 'environmentVariable' é o nome que a sua aplicação usará (process.env.NOME_DA_VARIAVEL).
+  secrets:
+    - secret: FIREBASE_SERVICE_ACCOUNT_KEY
+      environmentVariable: FIREBASE_SERVICE_ACCOUNT_KEY
+    - secret: WHATSAPP_ACCESS_TOKEN
+      environmentVariable: WHATSAPP_ACCESS_TOKEN
+    - secret: WHATSAPP_PHONE_NUMBER_ID
+      environmentVariable: WHATSAPP_PHONE_NUMBER_ID
+    - secret: META_WEBHOOK_VERIFY_TOKEN
+      environmentVariable: META_WEBHOOK_VERIFY_TOKEN
+    - secret: CRON_SECRET
+      environmentVariable: CRON_SECRET
+    - secret: STRIPE_SECRET_KEY
+      environmentVariable: STRIPE_SECRET_KEY
+    - secret: STRIPE_WEBHOOK_SECRET
+      environmentVariable: STRIPE_WEBHOOK_SECRET
+    - secret: WHATSAPP_API_URL
+      environmentVariable: WHATSAPP_API_URL
 
-instanceSize: cpu-1
+# Variáveis de ambiente normais (não secretas)
+env:
+  - variable: DEBUG_VAR
+    value: "Hello from the corrected apphosting.yaml"
