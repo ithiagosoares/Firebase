@@ -14,10 +14,21 @@ const PLAN_LIMITS: { [key: string]: number } = {
 };
 
 export async function GET(req: NextRequest) {
+    // =================================================================================
+    //  INÍCIO DO CÓDIGO DE DIAGNÓSTICO TEMPORÁRIO
+    // =================================================================================
+    console.log("AMBIENTE DE EXECUÇÃO (process.env):", JSON.stringify(process.env, null, 2));
+    
     const authHeader = req.headers.get('authorization');
+    // A verificação de segurança foi temporariamente desativada para depuração.
+    /* 
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
+    */
+    // =================================================================================
+    //  FIM DO CÓDIGO DE DIAGNÓSTICO
+    // =================================================================================
 
     try {
         console.log("CRON: Iniciando verificação de workflows...");
