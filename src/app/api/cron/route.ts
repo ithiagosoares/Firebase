@@ -6,15 +6,6 @@ import { Patient, Workflow, Template, Clinic, WithId } from "@/lib/types";
 import { differenceInDays, differenceInHours, differenceInMonths, differenceInWeeks } from "date-fns";
 import axios from "axios";
 
-// ============================================================================================
-// 🔥 MODO DE DEPURACÃO
-// ============================================================================================
-console.log("--- INICIANDO MODO DE DEPURACÃO DE VARIÁVEIS DE AMBIENTE ---");
-console.log(`Valor de DEBUG_VAR: ${process.env.DEBUG_VAR}`);
-console.log("Chaves disponíveis em process.env:", Object.keys(process.env));
-console.log("--- FIM DO MODO DE DEPURACÃO ---");
-// ============================================================================================
-
 const PLAN_LIMITS: { [key: string]: number } = {
     Essencial: 150,
     Profissional: 300,
@@ -33,7 +24,6 @@ export async function GET(req: NextRequest) {
         const clinicsSnapshot = await db().collection('clinics').get();
 
         for (const clinicDoc of clinicsSnapshot.docs) {
-            // ... (o resto do seu código permanece igual)
             const clinic = clinicDoc.data() as Clinic;
             const clinicId = clinicDoc.id;
             const plan = clinic.plan || 'Trial';
