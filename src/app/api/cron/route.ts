@@ -15,12 +15,20 @@ const PLAN_LIMITS: { [key: string]: number } = {
 
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
+    
+    // --- CRON AUTH DEBUG ---
+    console.log('--- CRON AUTH DEBUG ---');
+    console.log('1. Cabeçalho recebido (Authorization):', authHeader);
+    console.log('2. Secret esperado (process.env.CRON_SECRET):', process.env.CRON_SECRET);
+    console.log('3. Header completo que o código espera:', `Bearer ${process.env.CRON_SECRET}`);
+
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        console.error("Falha na autenticação do CRON. Cabeçalho inválido.");
         return new NextResponse('Unauthorized', { status: 401 });
     }
 
     try {
-        console.log("CRON: Iniciando verificação de workflows...");
+        console.log("CRON: Autenticação bem-sucedida. Iniciando verificação de workflows...");
         const clinicsSnapshot = await db().collection('clinics').get();
 
         for (const clinicDoc of clinicsSnapshot.docs) {

@@ -46,7 +46,7 @@ export function ProblemSection() {
                 className="relative mx-auto w-full max-w-md"
                 height="450"
                 width="450"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Calendar_broken.png?alt=media&token=76f03239-51c0-4c2c-aa14-7eebdaca7d52"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Calendar_broken.png?alt=media&token=b36dae57-d04e-42e4-be05-7507b348b183"
             />
           </div>
             

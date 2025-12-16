@@ -25,7 +25,7 @@ export function HowItWorksSection() {
                 alt="Ilustração de duas peças de quebra-cabeça se conectando"
                 className="w-full h-48 object-contain mb-4 mt-6"
                 height="200"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/puzzle.png?alt=media&token=35e1ea19-e0b9-4090-bc91-f5e008648f32"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/puzzle.png?alt=media&token=fd541669-1666-4e40-8b0b-b0c617fd2096"
                 width="200"
             />
             <h3 className="text-xl font-bold mb-2">Conecte sua Agenda</h3>
@@ -40,7 +40,7 @@ export function HowItWorksSection() {
                 alt="Ilustração de uma pessoa criando uma mensagem personalizada"
                 className="w-full h-48 object-contain mb-4 mt-6"
                 height="200"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/create_message.png?alt=media&token=928e53ce-2bac-4e77-8055-ced4ff7ece09"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/create_message.png?alt=media&token=b5503688-c7a6-48a1-828f-11894171d167"
                 width="200"
             />
             <h3 className="text-xl font-bold mb-2">Personalize a Mensagem</h3>
@@ -55,7 +55,7 @@ export function HowItWorksSection() {
                 alt="Ilustração de pessoas felizes recebendo mensagens automaticas"
                 className="w-full h-48 object-contain mb-4 mt-6"
                 height="200"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Happy_with_messages.png?alt=media&token=7c089afb-437b-4024-ac01-2d007a9cac96"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Happy_with_messages.png?alt=media&token=2261418f-b155-4bfb-9095-132832a7de37"
                 width="200"
             />
             <h3 className="text-xl font-bold mb-2">Deixe a Mágica Acontecer</h3>

@@ -28,7 +28,7 @@ export function CtaSection() {
                     className="mx-auto object-contain"
                     height="250"
                     width="250"
-                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/buttom.png?alt=media&token=ad1a612b-81fb-438a-b1c3-7b440dc35a40"
+                    src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/buttom.png?alt=media&token=9a3a05d5-0136-40d7-8169-3ebb04ca672a"
                 />
             </div>
           </div>

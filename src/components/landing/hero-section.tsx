@@ -46,7 +46,7 @@ export function HeroSection() {
                 alt="Ilustração de uma dentista feliz com sua agenda cheia"
                 className="relative mx-auto w-full max-w-md"
                 height="500"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Girl_calendar.png?alt=media&token=64cf70e0-f98d-4fe7-93d8-8a92ef9aa9b8"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Girl_calendar.png?alt=media&token=6c7dfd39-2a9d-4da9-afa7-4a2e31ea5409"
                 width="500"
             />
           </div>

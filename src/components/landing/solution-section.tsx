@@ -58,7 +58,7 @@ export function SolutionSection() {
                 className="relative mx-auto w-full max-w-sm"
                 height="350"
                 width="350"
-                src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/person_using.png?alt=media&token=ca288cf9-fa49-4666-a124-66a22137b806"
+                src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/person_using.png?alt=media&token=cb99ef7b-99aa-4c60-8946-e5c1e94628e8"
             />
           </div>
         </div>
