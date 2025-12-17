@@ -152,7 +152,7 @@ function CtaSection() {
                                 className: "mx-auto object-contain",
                                 height: "250",
                                 width: "250",
-                                src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/buttom.png?alt=media&token=ad1a612b-81fb-438a-b1c3-7b440dc35a40"
+                                src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/buttom.png?alt=media&token=9a3a05d5-0136-40d7-8169-3ebb04ca672a"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/landing/cta-section.tsx",
                                 lineNumber: 26,
@@ -878,7 +878,7 @@ function HeroSection() {
                             alt: "Ilustração de uma dentista feliz com sua agenda cheia",
                             className: "relative mx-auto w-full max-w-md",
                             height: "500",
-                            src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Girl_calendar.png?alt=media&token=64cf70e0-f98d-4fe7-93d8-8a92ef9aa9b8",
+                            src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Girl_calendar.png?alt=media&token=6c7dfd39-2a9d-4da9-afa7-4a2e31ea5409",
                             width: "500"
                         }, void 0, false, {
                             fileName: "[project]/src/components/landing/hero-section.tsx",
@@ -1408,7 +1408,7 @@ function HowItWorksSection() {
                                     alt: "Ilustração de duas peças de quebra-cabeça se conectando",
                                     className: "w-full h-48 object-contain mb-4 mt-6",
                                     height: "200",
-                                    src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/puzzle.png?alt=media&token=35e1ea19-e0b9-4090-bc91-f5e008648f32",
+                                    src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/puzzle.png?alt=media&token=fd541669-1666-4e40-8b0b-b0c617fd2096",
                                     width: "200"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/landing/how-it-works-section.tsx",
@@ -1452,7 +1452,7 @@ function HowItWorksSection() {
                                     alt: "Ilustração de uma pessoa criando uma mensagem personalizada",
                                     className: "w-full h-48 object-contain mb-4 mt-6",
                                     height: "200",
-                                    src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/create_message.png?alt=media&token=928e53ce-2bac-4e77-8055-ced4ff7ece09",
+                                    src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/create_message.png?alt=media&token=b5503688-c7a6-48a1-828f-11894171d167",
                                     width: "200"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/landing/how-it-works-section.tsx",
@@ -1496,7 +1496,7 @@ function HowItWorksSection() {
                                     alt: "Ilustração de pessoas felizes recebendo mensagens automaticas",
                                     className: "w-full h-48 object-contain mb-4 mt-6",
                                     height: "200",
-                                    src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Happy_with_messages.png?alt=media&token=7c089afb-437b-4024-ac01-2d007a9cac96",
+                                    src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Happy_with_messages.png?alt=media&token=2261418f-b155-4bfb-9095-132832a7de37",
                                     width: "200"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/landing/how-it-works-section.tsx",
@@ -1648,7 +1648,7 @@ function ProblemSection() {
                                 className: "relative mx-auto w-full max-w-md",
                                 height: "450",
                                 width: "450",
-                                src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Calendar_broken.png?alt=media&token=76f03239-51c0-4c2c-aa14-7eebdaca7d52"
+                                src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Calendar_broken.png?alt=media&token=b36dae57-d04e-42e4-be05-7507b348b183"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/landing/problem-section.tsx",
                                 lineNumber: 44,
@@ -2121,7 +2121,7 @@ function SolutionSection() {
                                 className: "relative mx-auto w-full max-w-sm",
                                 height: "350",
                                 width: "350",
-                                src: "https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/person_using.png?alt=media&token=ca288cf9-fa49-4666-a124-66a22137b806"
+                                src: "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/person_using.png?alt=media&token=cb99ef7b-99aa-4c60-8946-e5c1e94628e8"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/landing/solution-section.tsx",
                                 lineNumber: 56,

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     console.log('2. Secret esperado (process.env.CRON_SECRET):', process.env.CRON_SECRET);
     console.log('3. Header completo que o código espera:', `Bearer ${process.env.CRON_SECRET}`);
 
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (authHeader?.trim() !== `Bearer ${process.env.CRON_SECRET}`) {
         console.error("Falha na autenticação do CRON. Cabeçalho inválido.");
         return new NextResponse('Unauthorized', { status: 401 });
     }
