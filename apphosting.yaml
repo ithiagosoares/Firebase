@@ -1,4 +1,3 @@
-
 # The apphosting.yaml schema is defined here:
 # https://firebase.google.com/docs/hosting/app-hosting/apphosting-yaml-schema
 run:
@@ -10,20 +9,20 @@ backend:
   id: vitallink-backend
   region: us-central1
   ingress-settings: ALLOW_ALL
-  env:
-    - variable: CRON_SECRET
+  secretEnvironmentVariables:
+    - key: CRON_SECRET
       secret: CRON_JOB_SECRET
-    - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    - key: FIREBASE_SERVICE_ACCOUNT_KEY
       secret: FIREBASE_SERVICE_ACCOUNT_KEY
-    - variable: META_APP_SECRET
+    - key: META_APP_SECRET
       secret: META_APP_SECRET
-    - variable: META_WEBHOOK_VERIFY_TOKEN
+    - key: META_WEBHOOK_VERIFY_TOKEN
       secret: META_WEBHOOK_VERIFY_TOKEN
-    - variable: STRIPE_SECRET_KEY
+    - key: STRIPE_SECRET_KEY
       secret: STRIPE_SECRET_KEY
-    - variable: STRIPE_WEBHOOK_SECRET
+    - key: STRIPE_WEBHOOK_SECRET
       secret: STRIPE_WEBHOOK_SECRET
-    - variable: WHATSAPP_ACCESS_TOKEN
+    - key: WHATSAPP_ACCESS_TOKEN
       secret: WHATSAPP_ACCESS_TOKEN
-    - variable: WHATSAPP_PHONE_NUMBER_ID
+    - key: WHATSAPP_PHONE_NUMBER_ID
       secret: WHATSAPP_PHONE_NUMBER_ID
