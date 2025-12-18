@@ -7,11 +7,23 @@ run:
     - npm run build
   start: npm run start
 backend:
-  secrets:
-    - FIREBASE_SERVICE_ACCOUNT_KEY
-    - CRON_SECRET
+  id: vitallink-backend
+  region: us-central1
+  ingress-settings: ALLOW_ALL
   env:
+    - variable: CRON_SECRET
+      secret: CRON_JOB_SECRET
     - variable: FIREBASE_SERVICE_ACCOUNT_KEY
       secret: FIREBASE_SERVICE_ACCOUNT_KEY
-    - variable: CRON_SECRET
-      secret: CRON_SECRET
+    - variable: META_APP_SECRET
+      secret: META_APP_SECRET
+    - variable: META_WEBHOOK_VERIFY_TOKEN
+      secret: META_WEBHOOK_VERIFY_TOKEN
+    - variable: STRIPE_SECRET_KEY
+      secret: STRIPE_SECRET_KEY
+    - variable: STRIPE_WEBHOOK_SECRET
+      secret: STRIPE_WEBHOOK_SECRET
+    - variable: WHATSAPP_ACCESS_TOKEN
+      secret: WHATSAPP_ACCESS_TOKEN
+    - variable: WHATSAPP_PHONE_NUMBER_ID
+      secret: WHATSAPP_PHONE_NUMBER_ID

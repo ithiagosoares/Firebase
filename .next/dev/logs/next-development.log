@@ -1,5 +1,4 @@
-[00:00:21.900] Server  LOG      ✓ Ready in 14s
-[00:00:30.774] Server  LOG      ○ Compiling / ...
-[00:01:43.899] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[00:00:08.995] Server  LOG      ✓ Ready in 5.2s
+[00:03:40.578] Server  LOG      ○ Compiling / ...
+[00:04:38.393] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-[02:15:51.197] Server  LOG        Reload env: .env.local
