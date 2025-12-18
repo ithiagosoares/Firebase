@@ -26,3 +26,4 @@ backend:
       secret: WHATSAPP_ACCESS_TOKEN
     - key: WHATSAPP_PHONE_NUMBER_ID
       secret: WHATSAPP_PHONE_NUMBER_ID
+# Added to trigger git commit
