@@ -64,9 +64,6 @@ async function sendMessage(to: string, text: string) {
 // Rota para receber eventos do Webhook (POST)
 // Forçando um novo deploy para carregar os segredos atualizados.
 export async function POST(request: NextRequest) {
-  // LINHA DE DEPURAÇÃO MELHORADA:
-  console.log("AMBIENTE (JSON):", JSON.stringify(process.env, null, 2));
-
   const body = await request.json();
   console.log('Evento bruto do webhook recebido:', JSON.stringify(body, null, 2));
 
@@ -82,12 +79,12 @@ export async function POST(request: NextRequest) {
     const from = message.from; // Número de telefone de quem enviou.
     const text = message.text.body; // O conteúdo da mensagem.
 
-    console.log(`MENSAGEM EXTRAÍDA -> De: ${from}, Texto: "${text}"`);
+    console.log(`MENSAGEM EXTRAÍDA -> De: ${from}, Texto: \"${text}\"`);
 
     // ETAPA 2: LÓGICA DE NEGÓCIO E RESPOSTA
     
-    // Para testar, vamos criar um "eco". O sistema responderá com o que recebeu.
-    const responseText = `Recebemos sua mensagem: "${text}"`;
+    // Para testar, vamos criar um \"eco\". O sistema responderá com o que recebeu.
+    const responseText = `Recebemos sua mensagem: \"${text}\"`;
     
     // Chama a função para enviar a resposta de volta ao usuário
     await sendMessage(from, responseText);
