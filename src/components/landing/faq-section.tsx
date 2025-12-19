@@ -54,7 +54,7 @@ export function FaqSection() {
                     className="relative mx-auto max-w-md w-full"
                     height="450"
                     width="450"
-                    src="https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/Doctor_Question.png?alt=media&token=8558bed9-9b1e-4475-ba72-ed6969977b26"
+                    src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Doctor_Question.png?alt=media&token=dbd7188e-67ef-444d-bc26-b3a361374f96"
                 />
             </div>
             <div className="space-y-4">
