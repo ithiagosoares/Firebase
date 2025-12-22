@@ -51,3 +51,4 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
 [00:56:13.222] Server  WARN     ⚠ Fast Refresh had to perform a full reload due to a runtime error.
 [01:11:55.552] Server  LOG      ✓ Compiled in 2.1s
 [02:03:56.092] Server  LOG      ✓ Compiled in 1534ms
+[02:19:06.642] Server  LOG      ✓ Compiled in 664ms

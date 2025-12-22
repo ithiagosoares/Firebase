@@ -1,6 +1,7 @@
 
 'use client'
 
+import { Suspense } from 'react'; // Importar Suspense
 import { doc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { AppNav } from "@/app/(app)/app-nav";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useFirebase, useMemoFirebase } from "@/firebase/provider";
 import { useDoc } from "@/firebase/firestore/use-doc";
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, Loader2 } from "lucide-react"; // Importar Loader2
 import Link from "next/link";
 import { type User } from "@/lib/types";
 
@@ -115,7 +116,9 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
           <EmailVerificationBanner />
           
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-            {children}
+            <Suspense fallback={<div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+              {children}
+            </Suspense>
           </main>
         </div>
       </div>
