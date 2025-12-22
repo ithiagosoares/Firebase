@@ -3,7 +3,7 @@
 
 import { doc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import NavItem from "@/app/(app)/nav-item";
+import { AppNav } from "@/app/(app)/app-nav"; // Importando o novo componente de navegação
 import { OnboardingWrapper } from "@/app/(app)/onboarding-wrapper";
 import { AppLogo } from "@/components/app-logo";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
@@ -18,24 +18,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useFirebase, useMemoFirebase } from "@/firebase/provider";
 import { useDoc } from "@/firebase/firestore/use-doc";
-import { LogOut, Settings, User as UserIcon, Home, Users, MessageSquare, Calendar, Bot } from "lucide-react";
+import { LogOut, Settings, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { type User } from "@/lib/types";
 
-const navItems = [
-  { href: "/dashboard", icon: Home, label: "Início", tourId: "step-dashboard" },
-  { href: "/patients", icon: Users, label: "Pacientes", tourId: "step-patients" },
-  { href: "/templates", icon: MessageSquare, label: "Templates", tourId: "step-templates" },
-  { href: "/schedule", icon: Calendar, label: "Agendamentos", tourId: "step-schedule" },
-  { href: "/ai-assistant", icon: Bot, label: "Assistente IA", tourId: "step-ai-assistant" },
-];
+// A lista de navegação foi movida para o componente AppNav
 
 const UserMenu = () => {
   const { user } = useFirebase();
-  const auth = useAuth(); // Corrigido: Usar o hook de autenticação
+  const auth = useAuth();
 
   const handleLogout = () => {
-    signOut(auth); // Corrigido: Chamar signOut do Firebase
+    signOut(auth);
   };
 
   if (!user) return null;
@@ -110,11 +104,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <AppLogo />
             </div>
             <div className="flex-1">
-              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                {navItems.map((item) => (
-                  <NavItem key={item.href} {...item} />
-                ))}
-              </nav>
+              {/* O componente AppNav agora gerencia a navegação */}
+              <AppNav />
             </div>
           </div>
         </div>
