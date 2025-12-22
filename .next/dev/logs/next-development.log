@@ -35,3 +35,27 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
   }
 }
 [00:08:03.014] Server  LOG      ○ Compiling /dashboard ...
+[00:34:48.039] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
+{
+  "auth": {
+    "uid": "9C46MMXe0peps6330jT9nijb7Ks1",
+    "token": {
+      "name": null,
+      "email": "ti.santos10@gmail.com",
+      "email_verified": false,
+      "phone_number": null,
+      "sub": "9C46MMXe0peps6330jT9nijb7Ks1",
+      "firebase": {
+        "identities": {
+          "password": [
+            "ti.santos10@gmail.com"
+          ]
+        },
+        "sign_in_provider": "password",
+        "tenant": null
+      }
+    }
+  },
+  "method": "list",
+  "path": "/databases/(default)/documents/users/9C46MMXe0peps6330jT9nijb7Ks1/scheduledMessages"
+}
