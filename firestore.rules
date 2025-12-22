@@ -18,10 +18,12 @@ service cloud.firestore {
       // 1. O usuário é o dono do documento.
       // 2. O 'id' e o 'email' nos dados enviados correspondem aos do usuário autenticado.
       // 3. O campo 'onboardingCompleted' está sendo definido como 'false'.
+      // 4. O campo 'name' existe e é uma string.
       allow create: if isOwner() &&
                        request.resource.data.id == request.auth.uid &&
                        request.resource.data.email == request.auth.token.email &&
-                       request.resource.data.onboardingCompleted == false;
+                       request.resource.data.onboardingCompleted == false &&
+                       request.resource.data.name is string;
 
       // Permite a ATUALIZAÇÃO se:
       // 1. O usuário é o dono do documento.
