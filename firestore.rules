@@ -1,124 +1,104 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions for cleaner, reusable rules
+    function isUserAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Function to check ownership for existing resources
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // Rules for the top-level users collection
     match /users/{userId} {
-      // O usuário que faz a requisição deve ser o dono do documento.
-      function isOwner() {
-        return request.auth.uid == userId;
-      }
+      // Allow a user to read their own profile
+      allow get: if isOwner(userId);
 
-      // Permite a leitura do próprio perfil.
-      allow get: if isOwner();
-
-      // Nega a listagem de todos os usuários.
+      // Explicitly deny listing all users for security
       allow list: if false;
 
-      // Permite a CRIAÇÃO se:
-      // 1. O usuário é o dono do documento.
-      // 2. O 'id' e o 'email' nos dados enviados correspondem aos do usuário autenticado.
-      // 3. O campo 'onboardingCompleted' está sendo definido como 'false'.
-      // 4. O campo 'name' existe e é uma string.
-      allow create: if isOwner() &&
+      // Allow a user to create their own document, with specific data validation
+      allow create: if isOwner(userId) &&
                        request.resource.data.id == request.auth.uid &&
                        request.resource.data.email == request.auth.token.email &&
                        request.resource.data.onboardingCompleted == false &&
                        request.resource.data.name is string;
 
-      // Permite a ATUALIZAÇÃO se:
-      // 1. O usuário é o dono do documento.
-      // 2. Ele NÃO está tentando alterar seu 'id' ou 'email'.
-      allow update: if isOwner() &&
+      // Allow a user to update their own document, but prevent changing immutable fields like ID and email
+      allow update: if isOwner(userId) &&
                        request.resource.data.id == resource.data.id &&
                        request.resource.data.email == resource.data.email;
 
-      // Permite que o dono delete seu próprio perfil.
-      allow delete: if isOwner();
+      // Allow a user to delete their own account data
+      allow delete: if isOwner(userId);
     }
 
-    // Regra para a coleção de Clínicas
+    // Rules for the top-level clinics collection
     match /clinics/{clinicId} {
-      // Permite que um usuário leia, crie ou atualize um documento de clínica
-      // se o ID do documento for o mesmo que o ID do usuário autenticado.
-      allow get, create, update: if request.auth.uid == clinicId;
+      // Allow read, create, and update if the document ID matches the user's UID
+      allow get, create, update: if isOwner(clinicId);
     }
 
-    match /users/{userId}/prompts/{promptId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-        function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
+    // Rules for the patients subcollection
+    match /users/{userId}/patients/{patientId} {
+      // Allow all CRUD operations, but only for the owner of the user document
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+    
+    // Rules for the scheduledMessages subcollection
+    match /users/{userId}/scheduledMessages/{messageId} {
+      // Allow all CRUD operations, but only for the owner of the user document
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    // Rules for the messageTemplates subcollection (as found in the code)
+    match /users/{userId}/messageTemplates/{templateId} {
+      // Allow all CRUD operations, but only for the owner of the user document
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    // The following rules were in the original file and are related to AI features.
+    // Keeping them ensures no functionality is broken.
+    match /users/{userId}/prompts/{promptId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     match /users/{userId}/generationConfigurations/{generationConfigurationId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-        function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     match /users/{userId}/prompts/{promptId}/generatedContent/{generatedContentId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    match /users/{userId}/scheduledMessages/{messageId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isSignedIn() && isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
