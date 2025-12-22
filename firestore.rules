@@ -3,26 +3,38 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
+      // O usuário que faz a requisição deve ser o dono do documento.
+      function isOwner() {
         return request.auth.uid == userId;
       }
 
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
+      // Permite a leitura do próprio perfil.
+      allow get: if isOwner();
 
-      allow get: if isOwner(userId);
-      allow list: if false; // Listing users is not allowed.
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      // Nega a listagem de todos os usuários.
+      allow list: if false;
+
+      // Permite a CRIAÇÃO se:
+      // 1. O usuário é o dono do documento.
+      // 2. O 'id' e o 'email' nos dados enviados correspondem aos do usuário autenticado.
+      // 3. O campo 'onboardingCompleted' está sendo definido como 'false'.
+      allow create: if isOwner() &&
+                       request.resource.data.id == request.auth.uid &&
+                       request.resource.data.email == request.auth.token.email &&
+                       request.resource.data.onboardingCompleted == false;
+
+      // Permite a ATUALIZAÇÃO se:
+      // 1. O usuário é o dono do documento.
+      // 2. Ele NÃO está tentando alterar seu 'id' ou 'email'.
+      allow update: if isOwner() &&
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.email == resource.data.email;
+
+      // Permite que o dono delete seu próprio perfil.
+      allow delete: if isOwner();
     }
 
-    // ADICIONADO: Regra para a coleção de Clínicas
+    // Regra para a coleção de Clínicas
     match /clinics/{clinicId} {
       // Permite que um usuário leia, crie ou atualize um documento de clínica
       // se o ID do documento for o mesmo que o ID do usuário autenticado.

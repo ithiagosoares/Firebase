@@ -1,4 +1,37 @@
-[00:00:13.787] Server  LOG      ✓ Ready in 8.5s
-[00:00:22.023] Server  LOG      ○ Compiling / ...
-[00:01:15.499] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[00:00:09.427] Server  LOG      ✓ Ready in 5.6s
+[00:00:12.582] Server  LOG      ○ Compiling / ...
+[00:00:33.430] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[00:16:19.245] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
+{
+  "auth": {
+    "uid": "n9BAT8RVwJd97oG6HYXRMoBp0Sq1",
+    "token": {
+      "name": null,
+      "email": "ti.santos10@gmail.com",
+      "email_verified": false,
+      "phone_number": null,
+      "sub": "n9BAT8RVwJd97oG6HYXRMoBp0Sq1",
+      "firebase": {
+        "identities": {
+          "password": [
+            "ti.santos10@gmail.com"
+          ]
+        },
+        "sign_in_provider": "password",
+        "tenant": null
+      }
+    }
+  },
+  "method": "write",
+  "path": "/databases/(default)/documents/users/n9BAT8RVwJd97oG6HYXRMoBp0Sq1",
+  "resource": {
+    "data": {
+      "id": "n9BAT8RVwJd97oG6HYXRMoBp0Sq1",
+      "name": "Thiago Soares",
+      "email": "ti.santos10@gmail.com",
+      "onboardingCompleted": false
+    }
+  }
+}
+[00:16:21.399] Server  LOG      ○ Compiling /dashboard ...
