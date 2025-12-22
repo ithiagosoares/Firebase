@@ -1,17 +1,30 @@
-[00:00:11.809] Server  LOG      ✓ Ready in 7.6s
-[00:00:14.858] Server  LOG      ○ Compiling / ...
-[00:00:39.656] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[00:00:06.235] Server  LOG      ✓ Ready in 5.6s
+[00:00:09.293] Server  LOG      ○ Compiling / ...
+[00:00:28.652] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-[00:08:00.786] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
+[00:01:16.242] Server  LOG      ○ Compiling /dashboard ...
+[00:12:52.981] Server  LOG      ✓ Compiled in 1720ms
+[00:14:02.046] Server  ERROR    ⨯ Error: Attempted to call useFirebase() from the server but useFirebase is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.
+[00:14:02.142] Server  ERROR    ⨯ Error: Attempted to call useFirebase() from the server but useFirebase is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.
+[00:14:03.913] Server  LOG      ✓ Compiled in 0ms
+[00:14:05.770] Browser ERROR   {"message":"Failed to execute 'measure' on 'Performance': '​UserMenu' cannot have a negative time stamp."}
+[00:14:05.770] Browser ERROR   uncaughtError: TypeError: Failed to execute 'measure' on 'Performance': '​UserMenu' cannot have a negative time stamp.
+[00:18:41.683] Server  LOG      ✓ Compiled in 1065ms
+[00:18:42.141] Server  ERROR    ⨯ Error: Attempted to call useFirebase() from the server but useFirebase is on the client. It's not possible to invoke a client function from the server, it can only be rendered as a Component or passed to props of a Client Component.
+[00:18:45.031] Browser ERROR   {"message":"Failed to execute 'measure' on 'Performance': '​UserMenu' cannot have a negative time stamp."}
+[00:18:45.031] Browser ERROR   uncaughtError: TypeError: Failed to execute 'measure' on 'Performance': '​UserMenu' cannot have a negative time stamp.
+[00:20:12.406] Server  LOG      ✓ Compiled in 643ms
+[00:24:21.209] Server  LOG      ✓ Compiled in 1692ms
+[00:26:57.032] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
 {
   "auth": {
-    "uid": "Nb7QvdS2A8QABpJMscaaqhabZ972",
+    "uid": "93UTExAsI5OU9OkOQEiuhruouYo1",
     "token": {
       "name": null,
       "email": "ti.santos10@gmail.com",
       "email_verified": false,
       "phone_number": null,
-      "sub": "Nb7QvdS2A8QABpJMscaaqhabZ972",
+      "sub": "93UTExAsI5OU9OkOQEiuhruouYo1",
       "firebase": {
         "identities": {
           "password": [
@@ -24,62 +37,12 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
     }
   },
   "method": "write",
-  "path": "/databases/(default)/documents/users/Nb7QvdS2A8QABpJMscaaqhabZ972",
+  "path": "/databases/(default)/documents/users/93UTExAsI5OU9OkOQEiuhruouYo1",
   "resource": {
     "data": {
-      "id": "Nb7QvdS2A8QABpJMscaaqhabZ972",
-      "name": "Thiago Soares",
-      "email": "ti.santos10@gmail.com",
-      "onboardingCompleted": false
+      "onboardingProgress": [
+        "visited-dashboard"
+      ]
     }
   }
-}
-[00:08:03.014] Server  LOG      ○ Compiling /dashboard ...
-[00:34:48.039] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
-{
-  "auth": {
-    "uid": "9C46MMXe0peps6330jT9nijb7Ks1",
-    "token": {
-      "name": null,
-      "email": "ti.santos10@gmail.com",
-      "email_verified": false,
-      "phone_number": null,
-      "sub": "9C46MMXe0peps6330jT9nijb7Ks1",
-      "firebase": {
-        "identities": {
-          "password": [
-            "ti.santos10@gmail.com"
-          ]
-        },
-        "sign_in_provider": "password",
-        "tenant": null
-      }
-    }
-  },
-  "method": "list",
-  "path": "/databases/(default)/documents/users/9C46MMXe0peps6330jT9nijb7Ks1/scheduledMessages"
-}
-[00:54:33.662] Browser ERROR   uncaughtError: FirebaseError: Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
-{
-  "auth": {
-    "uid": "51cgptCGuxbj3QShu3ELcUqnhOh1",
-    "token": {
-      "name": null,
-      "email": "ti.santos10@gmail.com",
-      "email_verified": false,
-      "phone_number": null,
-      "sub": "51cgptCGuxbj3QShu3ELcUqnhOh1",
-      "firebase": {
-        "identities": {
-          "password": [
-            "ti.santos10@gmail.com"
-          ]
-        },
-        "sign_in_provider": "password",
-        "tenant": null
-      }
-    }
-  },
-  "method": "list",
-  "path": "/databases/(default)/documents/users/51cgptCGuxbj3QShu3ELcUqnhOh1/patients"
 }
