@@ -1,6 +1,5 @@
 'use client'
 
-import { PageHeader } from "@/components/page-header"
 import {
   Accordion,
   AccordionContent,
@@ -79,8 +78,7 @@ export default function SupportPage() {
   };
 
   return (
-    <>
-      <PageHeader title="Suporte" />
+    <div className="space-y-8">
       <div className="grid md:grid-cols-2 gap-8 items-start">
         <div>
             <Card className="mb-8">
@@ -134,6 +132,6 @@ export default function SupportPage() {
             </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   )
 }

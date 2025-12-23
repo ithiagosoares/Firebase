@@ -1,4 +1,13 @@
 {
+  "/(app)/calendar/page": "app/(app)/calendar/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/outbox/page": "app/(app)/outbox/page.js",
+  "/(app)/patients/page": "app/(app)/patients/page.js",
+  "/(app)/settings/page": "app/(app)/settings/page.js",
+  "/(app)/support/page": "app/(app)/support/page.js",
+  "/(app)/templates/new/page": "app/(app)/templates/new/page.js",
+  "/(app)/templates/page": "app/(app)/templates/page.js",
+  "/(app)/workflows/page": "app/(app)/workflows/page.js",
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/page": "app/page.js"
 }

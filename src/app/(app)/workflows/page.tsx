@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { MoreVertical, PlusCircle, Trash, Copy, Pencil, Send, Loader2, Workflow as WorkflowIcon } from "lucide-react"
 import Link from "next/link"
-import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -205,14 +204,14 @@ export default function WorkflowsPage() {
 
   return (
     <>
-      <PageHeader title="Fluxos de Automação">
+      <div className="flex justify-end mb-4">
         <Button asChild>
           <Link href="/workflows/new">
             <PlusCircle className="mr-2 h-4 w-4" />
             Criar Fluxo
           </Link>
         </Button>
-      </PageHeader>
+      </div>
 
       {workflows && workflows.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

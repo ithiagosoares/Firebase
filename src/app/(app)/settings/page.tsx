@@ -9,7 +9,6 @@ import Link from "next/link"
 import { type User } from "@/lib/types";
 
 // Componentes da UI
-import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -143,7 +142,20 @@ export default function SettingsPage() {
 
   const plans = [
     {
-      id: "essential",
+      id: "Free",
+      name: "Free",
+      price: "R$ 0",
+      priceDescription: "",
+      paymentLink: "",
+      features: [
+        "Até 5 conversas/mês",
+        "Funcionalidades básicas"
+      ],
+      isCurrent: userData?.plan === "Free",
+      actionText: "Plano Atual"
+    },
+    {
+      id: "Essencial",
       name: "Essencial",
       price: "R$ 79",
       priceDescription: "/mês",
@@ -154,11 +166,11 @@ export default function SettingsPage() {
         "Templates de mensagens",
         "Suporte via e-mail"
       ],
-      isCurrent: (userData as any)?.plan === "Essencial",
+      isCurrent: userData?.plan === "Essencial",
       actionText: "Escolher Plano"
     },
     {
-      id: "professional",
+      id: "Profissional",
       name: "Profissional",
       price: "R$ 149",
       priceDescription: "/mês",
@@ -170,11 +182,11 @@ export default function SettingsPage() {
         "Relatórios de envio",
         "Suporte prioritário"
       ],
-      isCurrent: (userData as any)?.plan === "Profissional",
+      isCurrent: userData?.plan === "Profissional",
       actionText: "Escolher Plano"
     },
     {
-      id: "premium",
+      id: "Premium",
       name: "Premium",
       price: "R$ 299",
       priceDescription: "/mês",
@@ -185,14 +197,13 @@ export default function SettingsPage() {
         "API de integração (Em Breve)",
         "Gerente de conta dedicado"
       ],
-      isCurrent: (userData as any)?.plan === "Premium",
+      isCurrent: userData?.plan === "Premium",
       actionText: "Escolher Plano"
     },
   ];
 
   return (
     <>
-      <PageHeader title="Configurações" />
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <div className="w-full overflow-x-auto">
           <TabsList className="inline-flex w-max space-x-2">
@@ -276,7 +287,14 @@ export default function SettingsPage() {
               <CardDescription>Escolha o plano que melhor se adapta às suas necessidades.</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-6">
-              {plans.map((plan) => {
+              {plans.filter(plan => {
+                // Só mostra o plano Free se for o plano atual do usuário
+                if (plan.id === 'Free') {
+                  return userData?.plan === 'Free';
+                }
+                // Mostra todos os outros planos
+                return true;
+              }).map((plan) => {
                 if (!authUser) return null;
 
                 const params = new URLSearchParams();
@@ -305,7 +323,7 @@ export default function SettingsPage() {
                     <CardFooter>
                         <Link href={paymentUrl} target="_blank" rel="noopener noreferrer" className="w-full">
                           <Button className="w-full" disabled={plan.isCurrent}>
-                            {plan.isCurrent ? "Plano Atual" : "Escolher Plano"}
+                            {plan.isCurrent ? "Plano Atual" : plan.actionText}
                           </Button>
                         </Link>
                     </CardFooter>

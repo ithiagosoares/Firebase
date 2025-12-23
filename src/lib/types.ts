@@ -1,7 +1,6 @@
 
 import { Timestamp } from "firebase/firestore";
 
-// CORREÇÃO: Adiciona e exporta o tipo genérico WithId.
 export type WithId<T> = T & { id: string };
 
 export type User = {
@@ -10,6 +9,10 @@ export type User = {
   email: string;
   onboardingCompleted?: boolean;
   whatsappApiToken?: string;
+  plan?: string;
+  credits?: {
+    remaining: number;
+  };
 }
 
 export type Clinic = {

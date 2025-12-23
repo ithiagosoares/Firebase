@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -49,6 +50,16 @@ service cloud.firestore {
 
     // Rules for the patients subcollection
     match /users/{userId}/patients/{patientId} {
+      // Allow all CRUD operations, but only for the owner of the user document
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isUserAuthenticated() && isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    // Rules for the workflows subcollection
+    match /users/{userId}/workflows/{workflowId} {
       // Allow all CRUD operations, but only for the owner of the user document
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);

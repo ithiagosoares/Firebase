@@ -3,21 +3,22 @@
 import { useRouter } from 'next/navigation'
 import { collection, addDoc } from 'firebase/firestore'
 import { TemplateForm, TemplateFormData } from '@/components/template-form'
-import { useFirestore } from '@/firebase/provider'
+import { useFirestore, useUser } from '@/firebase/provider' // Importando o useUser
 import { useToast } from '@/hooks/use-toast'
-import { PageHeader } from '@/components/page-header'
 
 export default function NewTemplatePage() {
   const router = useRouter()
   const { toast } = useToast()
   const firestore = useFirestore()
+  const { user } = useUser() // Obtendo o usuário autenticado
 
   const handleSave = async (data: TemplateFormData) => {
-    if (!firestore) return;
+    // Garante que temos o usuário e o firestore antes de prosseguir
+    if (!firestore || !user) return;
 
     try {
-      // CORREÇÃO: Salva na coleção raiz 'templates', para manter consistência com a edição.
-      const templatesCollection = collection(firestore, 'templates');
+      // Caminho correto da coleção, dentro do documento do usuário
+      const templatesCollection = collection(firestore, `users/${user.uid}/messageTemplates`);
       await addDoc(templatesCollection, data);
 
       toast({ title: "Template criado!", description: "Seu novo template foi salvo com sucesso." });
@@ -33,9 +34,6 @@ export default function NewTemplatePage() {
   };
 
   return (
-    <>
-      <PageHeader title="Criar Novo Template" />
-      <TemplateForm onSave={handleSave} onCancel={handleCancel} />
-    </>
+    <TemplateForm onSave={handleSave} onCancel={handleCancel} />
   )
 }

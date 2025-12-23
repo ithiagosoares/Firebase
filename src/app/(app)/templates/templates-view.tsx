@@ -18,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { PageHeader } from "@/components/page-header"
 import { type Template, WithId } from "@/lib/types"
 import { collection, doc, writeBatch, query, where, getDocs, deleteDoc, addDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
@@ -134,11 +133,11 @@ export default function TemplatesView() {
 
   return (
     <>
-      <PageHeader title="Templates de Mensagens">
+      <div className="flex justify-end mb-4">
         <Button asChild>
           <Link href="/templates/new"><PlusCircle className="mr-2 h-4 w-4" />Criar Template</Link>
         </Button>
-      </PageHeader>
+      </div>
 
       {templates && templates.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

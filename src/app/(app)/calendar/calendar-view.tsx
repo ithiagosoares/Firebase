@@ -2,7 +2,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -145,9 +144,9 @@ export default function CalendarView() { // Renomeado para CalendarView
 
   return (
     <>
-      <PageHeader title="Calendário de Consultas">
+      <div className="flex justify-end mb-4">
         <Button onClick={saveAppointment}>Agendar Consulta para 11:00</Button>
-      </PageHeader>
+      </div>
       <div className="grid md:grid-cols-[1fr_350px] gap-8 items-start">
         <Card>
           <CardContent className="p-0">

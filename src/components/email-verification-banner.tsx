@@ -38,15 +38,14 @@ export function EmailVerificationBanner() {
     }
   }
 
-  // Não mostrar nada se o usuário não estiver carregado, se não existir, ou se já estiver verificado.
   if (!user || user.emailVerified) {
     return null
   }
 
   if (emailSent) {
     return (
-      <Alert className="bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-300 rounded-none border-x-0 border-t-0">
-         <AlertCircle className="h-4 w-4 !text-green-600 dark:!text-green-400" />
+      <Alert className="bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-300 rounded-none border-x-0 border-t-0 py-2 flex items-center justify-center">
+         <AlertCircle className="h-4 w-4 !text-green-600 dark:!text-green-400 mr-2" />
         <AlertDescription>
           <strong>Confirmação enviada!</strong> Por favor, verifique sua caixa de entrada para concluir o processo. A página será atualizada automaticamente.
         </AlertDescription>
@@ -55,16 +54,16 @@ export function EmailVerificationBanner() {
   }
 
   return (
-    <Alert className="bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200 rounded-none border-x-0 border-t-0 flex items-center justify-between">
+    <Alert className="bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200 rounded-none border-x-0 border-t-0 flex flex-col md:flex-row items-center justify-center py-2 gap-2 md:gap-4">
       <div className="flex items-center">
-        <Rocket className="h-5 w-5 mr-3 text-amber-600 dark:text-amber-400" />
+        <Rocket className="h-5 w-5 mr-2 text-amber-600 dark:text-amber-400" />
         <AlertDescription>
           Seu e-mail ainda não foi verificado. Por favor, confirme seu e-mail para ter acesso a todas as funcionalidades.
         </AlertDescription>
       </div>
       <Button
         variant="link"
-        className="text-amber-900 dark:text-amber-200 hover:text-amber-700 dark:hover:text-amber-400 font-bold"
+        className="text-amber-900 dark:text-amber-200 hover:text-amber-700 dark:hover:text-amber-400 font-bold h-auto p-0"
         onClick={handleSendVerificationEmail}
         disabled={isSending}
       >

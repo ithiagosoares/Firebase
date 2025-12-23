@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -156,8 +155,8 @@ export default function OutboxPage() {
 
   return (
     <>
-      <PageHeader title="Caixa de Saída">
-        <div className="relative w-full max-w-sm">
+      <div className="flex justify-end mb-4">
+        <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por paciente..."
@@ -166,7 +165,7 @@ export default function OutboxPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-      </PageHeader>
+      </div>
 
       <div className="border rounded-lg">
         {Object.keys(messagesByPatient).length > 0 ? (

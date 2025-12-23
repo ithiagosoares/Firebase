@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { PageHeader } from "@/components/page-header"
 import { PatientForm } from "@/components/patient-form"
 import { type Patient } from "@/lib/types"
 import { ClientSideDateTime } from "@/components/client-side-date-time"
@@ -74,7 +73,7 @@ export default function PatientsView() {
 
   return (
     <>
-      <PageHeader title="Pacientes">
+      <div className="flex justify-end gap-4 mb-4">
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
           Importar via CSV
@@ -83,7 +82,7 @@ export default function PatientsView() {
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Paciente
         </Button>
-      </PageHeader>
+      </div>
       
       <div className="border rounded-lg">
         <Table>

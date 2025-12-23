@@ -1,8 +1,7 @@
-"use client"
+'use client'
 
 import { useMemo } from "react"
 import { NewPatientsChart, SentMessagesChart } from "@/components/dashboard-charts"
-import { PageHeader } from "@/components/page-header"
 import {
   Card,
   CardContent,
@@ -77,8 +76,6 @@ export default function DashboardView() {
 
   return (
     <>
-      <PageHeader title="Dashboard" />
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
         {quickLinks.map((link) => (
           <Card key={link.title} className="flex flex-col">
