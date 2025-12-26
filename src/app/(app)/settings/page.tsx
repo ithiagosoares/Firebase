@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect } from "react"
 import { usePathname, useRouter } from "next/navigation";
-import { Upload, ExternalLink, Save, Loader2, CheckCircle } from "lucide-react"
+import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound } from "lucide-react"
 import Link from "next/link"
 
 // Tipos locais
@@ -31,15 +31,13 @@ import { doc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { updateProfile } from "firebase/auth"
-
+import { updateProfile, sendPasswordResetEmail } from "firebase/auth"
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('account');
 
-  // Efeito para ler o hash da URL na montagem do componente
   useLayoutEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash) {
@@ -47,18 +45,17 @@ export default function SettingsPage() {
     }
   }, []);
 
-  // Função para mudar a aba e atualizar a URL
   const handleTabChange = (value: string) => {
       setActiveTab(value);
       router.replace(`/settings#${value}`, { scroll: false });
   };
   
-  // Hooks de autenticação e dados corrigidos
   const { user: authUser } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   // User Profile State
   const [firstName, setFirstName] = useState("")
@@ -66,7 +63,6 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("")
   const [profilePicPreview, setProfilePicPreview] = useState("https://firebasestorage.googleapis.com/v0/b/studio-296644579-18969.firebasestorage.app/o/perfil_usuario.svg?alt=media&token=bef5fdca-7321-4928-a649-c45def482e59")
   const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
-  const [newPassword, setNewPassword] = useState('');
 
   // Company State
   const [clinicName, setClinicName] = useState("Clínica VitalLink")
@@ -137,6 +133,24 @@ export default function SettingsPage() {
     } finally {
         setIsSubmitting(null);
         setProfilePicFile(null);
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    if (!auth || !authUser?.email) {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível identificar o usuário para redefinir a senha." });
+      return;
+    }
+
+    setIsSendingResetEmail(true);
+    try {
+      await sendPasswordResetEmail(auth, authUser.email);
+      toast({ title: "E-mail enviado!", description: "Enviamos um link para redefinição de senha para o seu e-mail." });
+    } catch (error) {
+      console.error("Error sending password reset email:", error);
+      toast({ variant: "destructive", title: "Erro ao enviar", description: "Não foi possível enviar o e-mail de redefinição de senha." });
+    } finally {
+      setIsSendingResetEmail(false);
     }
   }
 
@@ -233,7 +247,17 @@ export default function SettingsPage() {
                 <div className="space-y-2"><Label htmlFor="last-name">Sobrenome</Label><Input id="last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
               </div>
               <div className="space-y-2"><Label htmlFor="email">E-mail</Label><Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-              <div className="space-y-2"><Label htmlFor="password">Nova Senha</Label><Input id="password" type="password" placeholder="Deixe em branco para não alterar" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center space-x-4">
+                    <Button variant="outline" onClick={handlePasswordReset} disabled={isSendingResetEmail}>
+                        {isSendingResetEmail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                        {isSendingResetEmail ? "Enviando..." : "Alterar Senha"}
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                        Você receberá um e-mail com as instruções para redefinir sua senha.
+                    </p>
+                </div>
+            </div>
             </CardContent>
             <CardFooter>
               <Button onClick={handleSaveProfile} disabled={isSubmitting === 'profile'}>
@@ -288,11 +312,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-6">
               {plans.filter(plan => {
-                // Só mostra o plano Free se for o plano atual do usuário
                 if (plan.id === 'Free') {
                   return userData?.plan === 'Free';
                 }
-                // Mostra todos os outros planos
                 return true;
               }).map((plan) => {
                 if (!authUser) return null;

@@ -1,25 +1,40 @@
 
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, PlusCircle, Loader2, Lightbulb } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Calendar } from "@/components/ui/calendar"
+import { Trash2, PlusCircle, Loader2, Lightbulb, Calendar as CalendarIcon, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MultiSelect } from "@/components/ui/multi-select"
-import { type Patient, type Template, type WorkflowStep } from "@/lib/types"
-import { collection } from "firebase/firestore"
+import { type Patient, type Template, type PartialWorkflowStep, type Schedule, WithId } from "@/lib/types"
+import { collection, Timestamp } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+
+const defaultStep: PartialWorkflowStep = {
+    template: '',
+    schedule: { 
+        triggerType: 'relative', 
+        quantity: 1, 
+        unit: 'days', 
+        event: 'before' 
+    }
+};
 
 export default function NewWorkflowPage() {
     const router = useRouter();
@@ -29,9 +44,7 @@ export default function NewWorkflowPage() {
 
     const [title, setTitle] = useState("");
     const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
-    const [steps, setSteps] = useState<Partial<WorkflowStep>[]>([
-        { template: '', schedule: { quantity: 1, unit: 'days', event: 'before' } }
-    ]);
+    const [steps, setSteps] = useState<PartialWorkflowStep[]>([defaultStep]);
 
     const patientsCollection = useMemoFirebase(() => {
         if (!user) return null;
@@ -43,7 +56,7 @@ export default function NewWorkflowPage() {
         if (!user) return null;
         return collection(firestore, `users/${user.uid}/messageTemplates`);
     }, [firestore, user]);
-    const { data: templates, isLoading: isLoadingTemplates } = useCollection<Template>(templatesCollection);
+    const { data: templates, isLoading: isLoadingTemplates } = useCollection<WithId<Template>>(templatesCollection);
 
     const patientOptions = useMemo(() => {
         return patients ? patients.map(p => ({ value: p.id, label: p.name })) : [];
@@ -54,7 +67,7 @@ export default function NewWorkflowPage() {
     }, [templates]);
 
     const handleAddStep = () => {
-        setSteps([...steps, { template: '', schedule: { quantity: 1, unit: 'days', event: 'before' } }]);
+        setSteps([...steps, { ...defaultStep, schedule: { ...defaultStep.schedule } }]);
     };
 
     const handleRemoveStep = (index: number) => {
@@ -63,32 +76,107 @@ export default function NewWorkflowPage() {
     };
 
     const handleStepChange = (index: number, field: string, value: any) => {
-        const newSteps = [...steps];
-        const step = newSteps[index];
-        if (field.includes("schedule.")) {
-            const scheduleField = field.split(".")[1] as keyof WorkflowStep['schedule'];
-            if(step.schedule) {
-              (step.schedule[scheduleField] as any) = value;
+        setSteps(prevSteps => {
+            const newSteps = [...prevSteps];
+            const step = { ...newSteps[index] }; // Cópia superficial do passo
+
+            if (field.startsWith("schedule.")) {
+                const scheduleField = field.split(".")[1];
+                let newSchedule = { ...step.schedule }; // Cópia superficial do agendamento
+
+                if (scheduleField === 'triggerType') {
+                    if (value === 'relative') {
+                        newSchedule = { 
+                            triggerType: 'relative', 
+                            quantity: 1, 
+                            unit: 'days', 
+                            event: 'before' 
+                        };
+                    } else {
+                        // Mantém a data/hora se já existir, senão define uma padrão
+                        const existingSpecific = step.schedule?.triggerType === 'specific' ? (step.schedule as any).dateTime : new Date();
+                        newSchedule = { 
+                            triggerType: 'specific',
+                            dateTime: Timestamp.fromDate(existingSpecific)
+                        };
+                    }
+                } else {
+                     (newSchedule as any)[scheduleField] = value;
+                }
+                step.schedule = newSchedule;
+
+            } else {
+                (step as any)[field] = value;
             }
-        } else {
-            (step as any)[field] = value;
-        }
-        setSteps(newSteps);
+            
+            newSteps[index] = step;
+            return newSteps;
+        });
+    };
+
+    // Handler específico para o calendário e input de hora
+    const handleSpecificDateTimeChange = (index: number, newDate: Date | undefined, newTime: string | undefined) => {
+        setSteps(prevSteps => {
+            const newSteps = [...prevSteps];
+            const step = { ...newSteps[index] };
+            if (step.schedule?.triggerType !== 'specific') return prevSteps; // Segurança
+
+            const currentTimestamp = (step.schedule as any).dateTime;
+            const currentDate = currentTimestamp ? currentTimestamp.toDate() : new Date();
+            
+            let finalDate = currentDate;
+
+            if (newDate) {
+                finalDate.setFullYear(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+            }
+
+            if (newTime) {
+                const [hours, minutes] = newTime.split(':').map(Number);
+                finalDate.setHours(hours, minutes);
+            }
+            
+            const newSchedule = { ...step.schedule, dateTime: Timestamp.fromDate(finalDate) };
+            step.schedule = newSchedule as Schedule;
+            newSteps[index] = step;
+            return newSteps;
+        });
     };
 
     const handleSaveWorkflow = () => {
         if (!user) return;
         const workflowsCollection = collection(firestore, `users/${user.uid}/workflows`);
+        
+        // Validação e limpeza dos dados
+        const cleanedSteps = steps.map(step => {
+            if (!step.template) {
+                throw new Error("Todos os passos devem ter um template selecionado.");
+            }
+            if (step.schedule?.triggerType === 'relative') {
+                const { triggerType, quantity, unit, event } = step.schedule;
+                return { template: step.template, schedule: { triggerType, quantity, unit, event } };
+            } else if (step.schedule?.triggerType === 'specific') {
+                const { triggerType, dateTime } = step.schedule as any;
+                return { template: step.template, schedule: { triggerType, dateTime } };
+            }
+            throw new Error("Tipo de agendamento inválido em um dos passos.");
+        });
+
         const newWorkflow = {
             title,
             patients: selectedPatients,
-            steps,
+            steps: cleanedSteps,
             active: true,
-            target: "Pacientes selecionados" // or derive from selection
+            target: "Pacientes selecionados"
         };
-        addDocumentNonBlocking(workflowsCollection, newWorkflow);
-        toast({ title: "Fluxo salvo!", description: "Seu novo fluxo de automação foi criado." });
-        router.push("/workflows");
+
+        try {
+            addDocumentNonBlocking(workflowsCollection, newWorkflow);
+            toast({ title: "Fluxo salvo!", description: "Seu novo fluxo de automação foi criado." });
+            router.push("/workflows");
+        } catch (error) {
+            console.error("Erro ao salvar fluxo: ", error);
+            toast({ title: "Erro", description: (error as Error).message, variant: "destructive" });
+        }
     };
 
     if (isUserLoadingUser || isLoadingPatients || isLoadingTemplates) {
@@ -103,9 +191,8 @@ export default function NewWorkflowPage() {
             <Lightbulb className="h-4 w-4 text-blue-600" />
             <AlertTitle className="font-bold text-blue-800">Dicas Importantes</AlertTitle>
             <AlertDescription className="space-y-1 mt-2">
-                <p>• Os fluxos são acionados pela data em <strong>"Próxima Consulta"</strong> no cadastro do paciente. Pacientes sem essa data serão ignorados.</p>
-                <p>• A opção "Enviar Agora" em um fluxo existente aplicará as regras apenas para pacientes que já têm uma próxima consulta agendada.</p>
-                <p>• Se adicionar um novo paciente a um fluxo depois, você pode usar a opção "Enviar Agora" para agendar as mensagens para ele.</p>
+                <p>• O gatilho <strong>Relativo à Consulta</strong> usa a data em "Próxima Consulta" no cadastro do paciente.</p>
+                <p>• O gatilho <strong>Data e Hora Específica</strong> envia a mensagem na data e hora exatas que você definir, para todos os pacientes do fluxo.</p>
             </AlertDescription>
         </Alert>
 
@@ -153,33 +240,80 @@ export default function NewWorkflowPage() {
                         </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-2">
-                        <Label>Quando enviar?</Label>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span>Enviar</span>
-                            <Input type="number" value={step.schedule?.quantity} onChange={e => handleStepChange(index, 'schedule.quantity', parseInt(e.target.value))} className="w-16" />
-                            <Select value={step.schedule?.unit} onValueChange={value => handleStepChange(index, 'schedule.unit', value)}>
-                                <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="hours">Horas</SelectItem>
-                                    <SelectItem value="days">Dias</SelectItem>
-                                    <SelectItem value="weeks">Semanas</SelectItem>
-                                    <SelectItem value="months">Meses</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select value={step.schedule?.event} onValueChange={value => handleStepChange(index, 'schedule.event', value)}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="before">Antes da consulta</SelectItem>
-                                    <SelectItem value="after">Depois da consulta</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+
+                    <div className="space-y-3">
+                        <Label>Gatilho de Envio</Label>
+                        <RadioGroup 
+                            value={step.schedule?.triggerType}
+                            onValueChange={(value) => handleStepChange(index, 'schedule.triggerType', value)}
+                            className="flex space-x-4"
+                        >
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="relative" id={`relative-${index}`} /><Label htmlFor={`relative-${index}`}>Relativo à Consulta</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="specific" id={`specific-${index}`} /><Label htmlFor={`specific-${index}`}>Data e Hora Específica</Label></div>
+                        </RadioGroup>
                     </div>
+
+                    {step.schedule?.triggerType === 'relative' && (
+                        <div className="space-y-2 animate-in fade-in">
+                            <Label>Quando enviar?</Label>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span>Enviar</span>
+                                <Input type="number" value={step.schedule?.quantity} onChange={e => handleStepChange(index, 'schedule.quantity', parseInt(e.target.value))} className="w-16" />
+                                <Select value={step.schedule?.unit} onValueChange={value => handleStepChange(index, 'schedule.unit', value)}>
+                                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="hours">Horas</SelectItem>
+                                        <SelectItem value="days">Dias</SelectItem>
+                                        <SelectItem value="weeks">Semanas</SelectItem>
+                                        <SelectItem value="months">Meses</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={step.schedule?.event} onValueChange={value => handleStepChange(index, 'schedule.event', value)}>
+                                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="before">Antes da consulta</SelectItem>
+                                        <SelectItem value="after">Depois da consulta</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
+
+                    {step.schedule?.triggerType === 'specific' && (
+                        <div className="space-y-2 animate-in fade-in">
+                             <Label>Em qual data e hora?</Label>
+                             <div className="flex items-center gap-2 flex-wrap">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn("w-[240px] justify-start text-left font-normal", !(step.schedule as any).dateTime && "text-muted-foreground")}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {(step.schedule as any).dateTime ? format((step.schedule as any).dateTime.toDate(), "PPP") : <span>Escolha uma data</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={(step.schedule as any).dateTime?.toDate()}
+                                            onSelect={(date) => handleSpecificDateTimeChange(index, date, undefined)}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        type="time"
+                                        className="w-32 pl-10"
+                                        value={(step.schedule as any).dateTime ? format((step.schedule as any).dateTime.toDate(), "HH:mm") : '09:00'}
+                                        onChange={(e) => handleSpecificDateTimeChange(index, undefined, e.target.value)}
+                                    />
+                                </div>
+                             </div>
+                        </div>
+                    )}
                 </div>
                 ))}
 

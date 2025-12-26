@@ -77,15 +77,32 @@ export type Template = {
   isDefault?: boolean;
 };
 
+// Definindo os dois tipos de agendamento possíveis
+export type RelativeSchedule = {
+  triggerType: 'relative';
+  quantity: number;
+  unit: 'hours' | 'days' | 'weeks' | 'months';
+  event: 'before' | 'after';
+};
+
+export type SpecificSchedule = {
+  triggerType: 'specific';
+  dateTime: Timestamp;
+};
+
+// O Schedule agora pode ser um dos dois tipos
+export type Schedule = RelativeSchedule | SpecificSchedule;
+
 export type WorkflowStep = {
   id: string;
   template: string;
-  schedule: {
-    quantity: number;
-    unit: 'hours' | 'days' | 'weeks' | 'months';
-    event: 'before' | 'after';
-  }
+  schedule: Schedule;
 }
+
+// Tipo parcial para o formulário, para acomodar a montagem incremental
+export type PartialWorkflowStep = Omit<Partial<WorkflowStep>, 'schedule'> & {
+  schedule?: Partial<Schedule>;
+};
 
 export type Workflow = {
   id: string;
