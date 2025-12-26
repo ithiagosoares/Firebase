@@ -1,89 +1,136 @@
-'use client';
+'use client'
 
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { useToast } from '../hooks/use-toast';
-import { Loader2, CheckCircle, Link as LinkIcon } from 'lucide-react';
-import { useUser } from '@/firebase/provider';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, getFirestore } from 'firebase/firestore';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, Zap, CheckCircle } from 'lucide-react';
+import { useUser, useFirestore } from '@/firebase/provider';
+import { doc, getDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-// Componente que lida com a integração oficial da Twilio
+declare global {
+  interface Window {
+    FB: any;
+    fbAsyncInit: () => void;
+  }
+}
+
+const META_APP_ID = '821688910682652';
+
 export function WhatsappIntegration() {
-  const { user: authUser } = useUser();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const { toast } = useToast();
-  
-  // CORREÇÃO: Garante que o Firestore só é inicializado uma vez e no lado do cliente.
-  const firestore = useMemo(() => getFirestore(), []);
-
+  const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [integrationStatus, setIntegrationStatus] = useState<'connected' | 'disconnected' | 'loading'>('loading');
 
-  // Referência ao documento da clínica no Firestore
-  const clinicDocRef = authUser ? doc(firestore, 'clinics', authUser.uid) : null;
-  const { data: clinicData } = useDoc<{ isTwilioConnected?: boolean }>(clinicDocRef);
-
-  const isConnected = clinicData?.isTwilioConnected === true;
-
-  // Função para iniciar o fluxo de conexão da Twilio
-  const handleConnect = async () => {
-    setIsLoading(true);
-    toast({ title: "Iniciando conexão...", description: "Você será redirecionado para a Twilio." });
-
+  const checkIntegrationStatus = useCallback(async () => {
+    if (!user || !firestore) return;
     try {
-      const response = await fetch('/api/twilio/embedded-signup', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.url) {
-        // Abre a URL de consentimento da Twilio em uma nova aba/popup
-        window.open(data.url, 'twilioConnect', 'width=800,height=600');
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists() && userDoc.data().whatsappSession) {
+        setIntegrationStatus('connected');
       } else {
-        throw new Error(data.error || 'Falha ao obter URL da Twilio.');
+        setIntegrationStatus('disconnected');
       }
-    } catch (error: any) {
-      console.error('Falha ao iniciar a conexão com a Twilio:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro de Conexão',
-        description: error.message || 'Não foi possível iniciar o processo de conexão.',
-      });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Erro ao verificar status da integração:", error);
+      setIntegrationStatus('disconnected');
     }
+  }, [user, firestore]);
+
+  useEffect(() => {
+    checkIntegrationStatus();
+  }, [checkIntegrationStatus]);
+
+  useEffect(() => {
+    if (document.getElementById('facebook-jssdk')) {
+      setIsSdkLoaded(true);
+      return;
+    }
+
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: META_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v19.0'
+      });
+      setIsSdkLoaded(true);
+    };
+
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+  }, []);
+
+  const handleLogin = () => {
+    if (!isSdkLoaded || !user) {
+      toast({ title: "Aguarde", description: "A integração com a Meta ainda está carregando. Tente novamente em alguns segundos." });
+      return;
+    }
+
+    setIsLoading(true);
+
+    window.FB.login(function(response: any) {
+      if (response.authResponse) {
+        console.log('Embedded signup finalizado, aguardando redirecionamento...');
+      } else {
+        console.log('User cancelled login or did not fully authorize.');
+        toast({ variant: 'destructive', title: 'Conexão Cancelada', description: 'O processo de conexão não foi concluído.' });
+        setIsLoading(false);
+      }
+    }, {
+      config_id: '821688910682652', // Usando o App ID como ID de Configuração.
+      response_type: 'code',
+      override_default_response_type: true,
+      state: user.uid,
+    });
   };
   
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Integração com WhatsApp Oficial</CardTitle>
+        <CardTitle>Integração com WhatsApp</CardTitle>
         <CardDescription>
-          Conecte sua conta do WhatsApp Business para enviar mensagens de forma automatizada e segura através da API oficial.
+          Conecte sua conta do WhatsApp Business para automatizar o envio de mensagens, lembretes e consentimentos diretamente da plataforma.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col items-center justify-center gap-4 p-6">
-        {isConnected ? (
-          <div className="flex flex-col items-center gap-3 text-center">
-            <CheckCircle className="h-12 w-12 text-green-500" />
-            <h3 className="text-lg font-semibold">Conexão Ativa</h3>
-            <p className="text-sm text-muted-foreground">Sua conta do WhatsApp Business está conectada com sucesso.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3 text-center">
-             <LinkIcon className="h-10 w-10 text-muted-foreground" />
-             <h3 className="text-lg font-semibold">Nenhuma conexão encontrada</h3>
-             <p className="text-sm text-muted-foreground max-w-md">Clique no botão abaixo para ser guiado pelo processo de conexão segura da Twilio e habilitar o envio de mensagens.</p>
-            <Button onClick={handleConnect} disabled={isLoading} size="lg" className="mt-4">
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Aguardando...</>
-              ) : (
-                'Conectar com WhatsApp'
-              )}
-            </Button>
-          </div>
+      <CardContent className="flex flex-col items-center justify-center space-y-4 p-8">
+        <img src="/whatsapp-banner.svg" alt="WhatsApp Integration" className="w-full max-w-sm mx-auto"/>
+        
+        {integrationStatus === 'loading' && (
+          <Button disabled className="w-full max-w-xs">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Verificando Status...
+          </Button>
         )}
+
+        {integrationStatus === 'disconnected' && (
+          <Button onClick={handleLogin} disabled={!isSdkLoaded || isLoading} className="w-full max-w-xs bg-green-600 hover:bg-green-700">
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+            {isLoading ? 'Conectando...' : 'Conectar com WhatsApp'}
+          </Button>
+        )}
+
+        {integrationStatus === 'connected' && (
+           <div className="p-4 bg-green-50 border border-green-200 rounded-md w-full max-w-xs text-center">
+             <CheckCircle className="mx-auto h-8 w-8 text-green-600 mb-2" />
+             <p className="font-semibold text-green-800">WhatsApp Conectado</p>
+             <p className="text-sm text-green-700">Sua conta está ativa e pronta para enviar mensagens.</p>
+           </div>
+        )}
+
+        <p className="text-xs text-muted-foreground text-center max-w-md">
+          Ao conectar, você concorda com os <a href="https://www.whatsapp.com/legal/business-policy/" target="_blank" rel="noopener noreferrer" className="underline">Termos de Serviço do WhatsApp Business</a>. 
+          Uma janela pop-up da Meta será aberta para autenticação.
+        </p>
       </CardContent>
     </Card>
   );

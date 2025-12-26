@@ -1,17 +1,5 @@
-[00:00:25.486] Server  LOG      ✓ Ready in 18.1s
-[00:00:29.107] Server  LOG      ○ Compiling /_not-found/page ...
-[00:01:29.548] Server  LOG      ○ Compiling / ...
-[00:01:35.836] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[00:00:25.828] Server  LOG      ✓ Ready in 16.3s
+[00:00:36.064] Server  LOG      ○ Compiling / ...
+[00:02:29.408] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-[00:03:43.594] Server  LOG      ○ Compiling /dashboard ...
-[00:07:43.413] Server  LOG      ○ Compiling /patients ...
-[00:20:52.191] Server  LOG      ✓ Compiled in 2.8s
-[00:25:05.907] Server  LOG      ✓ Compiled in 486ms
-[00:31:57.126] Server  LOG      ✓ Compiled in 534ms
-[00:32:59.841] Server  LOG      ✓ Compiled in 985ms
-[00:35:55.621] Server  LOG      ○ Compiling /workflows/edit/[id] ...
-[00:49:02.910] Server  LOG      ✓ Compiled in 2.8s
-[00:52:37.199] Server  LOG      ✓ Compiled in 1531ms
-[00:58:04.667] Server  LOG      ✓ Compiled in 492ms
-[01:12:00.844] Server  LOG      ✓ Compiled in 405ms
-[01:30:09.471] Server  LOG      ✓ Compiled in 3.8s
+[00:30:34.527] Server  LOG      ✓ Compiled in 3.2s
