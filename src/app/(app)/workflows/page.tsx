@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -22,9 +23,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
-import { type Workflow, type ScheduledMessage, type Patient } from "@/lib/types"
+import { type Workflow, type ScheduledMessage, type Patient, type Schedule, type RelativeSchedule } from "@/lib/types"
 import { collection, doc, writeBatch, query, where, getDocs, Timestamp, orderBy, limit, getDoc } from "firebase/firestore"
-import { add, sub } from "date-fns"
+import { add, sub, format } from "date-fns"
+import { ptBR } from 'date-fns/locale';
 
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
@@ -70,10 +72,12 @@ export default function WorkflowsPage() {
     const scheduledMessagesCollection = collection(firestore, `users/${userId}/scheduledMessages`);
   
     workflow.steps.forEach(step => {
-      let scheduledTime;
-  
-      const scheduleAction = step.schedule.event === 'before' ? sub : add;
-      scheduledTime = scheduleAction(appointmentDate, { [step.schedule.unit]: step.schedule.quantity });
+      // "Enviar agora" só se aplica a agendamentos relativos à consulta
+      if (step.schedule.triggerType !== 'relative') return;
+
+      const schedule = step.schedule as RelativeSchedule;
+      const scheduleAction = schedule.event === 'before' ? sub : add;
+      const scheduledTime = scheduleAction(appointmentDate, { [schedule.unit]: schedule.quantity });
   
       const newMessage: Omit<ScheduledMessage, 'id' | 'appointmentId'> = {
         userId,
@@ -105,7 +109,6 @@ export default function WorkflowsPage() {
         if (patientData.nextAppointment && patientData.nextAppointment.toDate() > new Date()) {
             const appointmentDate = patientData.nextAppointment.toDate();
             
-            // Check for existing scheduled messages for this workflow and patient
             const q = query(
               scheduledMessagesCollection, 
               where("patientId", "==", patientId),
@@ -159,19 +162,28 @@ export default function WorkflowsPage() {
   
   const getScheduleDescription = (wf: Workflow) => {
     if (!wf.steps || wf.steps.length === 0) return "Nenhum passo";
-    const firstStep = wf.steps[0];
-    const { quantity, unit, event } = firstStep.schedule;
     
-    const unitMap: Record<string, string> = {
-        hours: "hora(s)",
-        days: "dia(s)",
-        weeks: "semana(s)",
-        months: "mês(es)"
-    };
+    const { schedule } = wf.steps[0];
 
-    const friendlyUnit = unitMap[unit] || unit;
+    if (schedule.triggerType === 'specific') {
+        // O timestamp pode vir do Firestore, então garantimos que é um objeto Date
+        const date = (schedule.dateTime as any).toDate ? (schedule.dateTime as any).toDate() : new Date();
+        return `Em ${format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
+    }
 
-    return `${quantity} ${friendlyUnit} ${event === 'before' ? 'antes' : 'depois'} da consulta`;
+    if (schedule.triggerType === 'relative') {
+        const { quantity, unit, event } = schedule;
+        const unitMap: Record<string, string> = {
+            hours: "hora(s)",
+            days: "dia(s)",
+            weeks: "semana(s)",
+            months: "mês(es)"
+        };
+        const friendlyUnit = unitMap[unit] || unit;
+        return `${quantity} ${friendlyUnit} ${event === 'before' ? 'antes' : 'depois'} da consulta`;
+    }
+    
+    return "Agendamento inválido";
   }
   
   const renderEmptyState = () => (

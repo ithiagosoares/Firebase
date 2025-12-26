@@ -271,10 +271,13 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$firebase$2f$
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@firebase/firestore/dist/index.node.mjs [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$add$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/add.mjs [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$sub$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/sub.mjs [app-ssr] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$format$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/date-fns/format.mjs [app-ssr] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$locale$2f$pt$2d$BR$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/date-fns/locale/pt-BR.mjs [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$firebase$2f$provider$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/firebase/provider.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$firebase$2f$firestore$2f$use$2d$collection$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/firebase/firestore/use-collection.tsx [app-ssr] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$firebase$2f$non$2d$blocking$2d$updates$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/firebase/non-blocking-updates.ts [app-ssr] (ecmascript)");
 "use client";
+;
 ;
 ;
 ;
@@ -325,10 +328,12 @@ function WorkflowsPage() {
     const scheduleMessagesForAppointment = (userId, patientId, appointmentDate, workflow)=>{
         const scheduledMessagesCollection = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["collection"])(firestore, `users/${userId}/scheduledMessages`);
         workflow.steps.forEach((step)=>{
-            let scheduledTime;
-            const scheduleAction = step.schedule.event === 'before' ? __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$sub$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sub"] : __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$add$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["add"];
-            scheduledTime = scheduleAction(appointmentDate, {
-                [step.schedule.unit]: step.schedule.quantity
+            // "Enviar agora" só se aplica a agendamentos relativos à consulta
+            if (step.schedule.triggerType !== 'relative') return;
+            const schedule = step.schedule;
+            const scheduleAction = schedule.event === 'before' ? __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$sub$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["sub"] : __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$add$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["add"];
+            const scheduledTime = scheduleAction(appointmentDate, {
+                [schedule.unit]: schedule.quantity
             });
             const newMessage = {
                 userId,
@@ -356,7 +361,6 @@ function WorkflowsPage() {
             if (!patientData) continue;
             if (patientData.nextAppointment && patientData.nextAppointment.toDate() > new Date()) {
                 const appointmentDate = patientData.nextAppointment.toDate();
-                // Check for existing scheduled messages for this workflow and patient
                 const q = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["query"])(scheduledMessagesCollection, (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["where"])("patientId", "==", patientId), (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["where"])("workflowId", "==", workflow.id), (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["where"])("status", "==", "Agendado"));
                 const existingMessagesSnapshot = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2f$firestore$2f$dist$2f$index$2e$node$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["getDocs"])(q);
                 if (existingMessagesSnapshot.empty) {
@@ -400,16 +404,26 @@ function WorkflowsPage() {
     };
     const getScheduleDescription = (wf)=>{
         if (!wf.steps || wf.steps.length === 0) return "Nenhum passo";
-        const firstStep = wf.steps[0];
-        const { quantity, unit, event } = firstStep.schedule;
-        const unitMap = {
-            hours: "hora(s)",
-            days: "dia(s)",
-            weeks: "semana(s)",
-            months: "mês(es)"
-        };
-        const friendlyUnit = unitMap[unit] || unit;
-        return `${quantity} ${friendlyUnit} ${event === 'before' ? 'antes' : 'depois'} da consulta`;
+        const { schedule } = wf.steps[0];
+        if (schedule.triggerType === 'specific') {
+            // O timestamp pode vir do Firestore, então garantimos que é um objeto Date
+            const date = schedule.dateTime.toDate ? schedule.dateTime.toDate() : new Date();
+            return `Em ${(0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$format$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$locals$3e$__["format"])(date, "dd/MM/yyyy 'às' HH:mm", {
+                locale: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$date$2d$fns$2f$locale$2f$pt$2d$BR$2e$mjs__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["ptBR"]
+            })}`;
+        }
+        if (schedule.triggerType === 'relative') {
+            const { quantity, unit, event } = schedule;
+            const unitMap = {
+                hours: "hora(s)",
+                days: "dia(s)",
+                weeks: "semana(s)",
+                months: "mês(es)"
+            };
+            const friendlyUnit = unitMap[unit] || unit;
+            return `${quantity} ${friendlyUnit} ${event === 'before' ? 'antes' : 'depois'} da consulta`;
+        }
+        return "Agendamento inválido";
     };
     const renderEmptyState = ()=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-8",
@@ -420,7 +434,7 @@ function WorkflowsPage() {
                         className: "h-12 w-12 text-muted-foreground"
                     }, void 0, false, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 180,
+                        lineNumber: 192,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -428,7 +442,7 @@ function WorkflowsPage() {
                         children: "Nenhum fluxo de automação criado"
                     }, void 0, false, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 181,
+                        lineNumber: 193,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -436,7 +450,7 @@ function WorkflowsPage() {
                         children: "Comece a automatizar sua comunicação criando seu primeiro fluxo."
                     }, void 0, false, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 184,
+                        lineNumber: 196,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -449,30 +463,30 @@ function WorkflowsPage() {
                                     className: "mr-2 h-4 w-4"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                    lineNumber: 189,
+                                    lineNumber: 201,
                                     columnNumber: 13
                                 }, this),
                                 "Criar Fluxo"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                            lineNumber: 188,
+                            lineNumber: 200,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 187,
+                        lineNumber: 199,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                lineNumber: 179,
+                lineNumber: 191,
                 columnNumber: 7
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/(app)/workflows/page.tsx",
-            lineNumber: 178,
+            lineNumber: 190,
             columnNumber: 5
         }, this);
     if (isLoading || isUserLoading || isLoadingPatients) {
@@ -482,12 +496,12 @@ function WorkflowsPage() {
                 className: "h-8 w-8 animate-spin text-primary"
             }, void 0, false, {
                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                lineNumber: 200,
+                lineNumber: 212,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/(app)/workflows/page.tsx",
-            lineNumber: 199,
+            lineNumber: 211,
             columnNumber: 7
         }, this);
     }
@@ -504,24 +518,24 @@ function WorkflowsPage() {
                                 className: "mr-2 h-4 w-4"
                             }, void 0, false, {
                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                lineNumber: 210,
+                                lineNumber: 222,
                                 columnNumber: 13
                             }, this),
                             "Criar Fluxo"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 209,
+                        lineNumber: 221,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                    lineNumber: 208,
+                    lineNumber: 220,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                lineNumber: 207,
+                lineNumber: 219,
                 columnNumber: 7
             }, this),
             workflows && workflows.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -538,7 +552,7 @@ function WorkflowsPage() {
                                                 children: wf.title
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 222,
+                                                lineNumber: 234,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$switch$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Switch"], {
@@ -547,13 +561,13 @@ function WorkflowsPage() {
                                                 "aria-label": "Ativar ou desativar fluxo"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 223,
+                                                lineNumber: 235,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 221,
+                                        lineNumber: 233,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
@@ -564,13 +578,13 @@ function WorkflowsPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 228,
+                                        lineNumber: 240,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                lineNumber: 220,
+                                lineNumber: 232,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -585,13 +599,13 @@ function WorkflowsPage() {
                                                 children: getScheduleDescription(wf)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 234,
+                                                lineNumber: 246,
                                                 columnNumber: 32
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 233,
+                                        lineNumber: 245,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -603,19 +617,19 @@ function WorkflowsPage() {
                                                 children: wf.steps.length
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 237,
+                                                lineNumber: 249,
                                                 columnNumber: 27
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 236,
+                                        lineNumber: 248,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                lineNumber: 232,
+                                lineNumber: 244,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardFooter"], {
@@ -630,14 +644,14 @@ function WorkflowsPage() {
                                                 className: "mr-2 h-4 w-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 242,
+                                                lineNumber: 254,
                                                 columnNumber: 19
                                             }, this),
                                             "Enviar Agora"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 241,
+                                        lineNumber: 253,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenu"], {
@@ -651,17 +665,17 @@ function WorkflowsPage() {
                                                         className: "h-4 w-4"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 248,
+                                                        lineNumber: 260,
                                                         columnNumber: 23
                                                     }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                    lineNumber: 247,
+                                                    lineNumber: 259,
                                                     columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 246,
+                                                lineNumber: 258,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenuContent"], {
@@ -671,12 +685,12 @@ function WorkflowsPage() {
                                                         children: "Ações"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 252,
+                                                        lineNumber: 264,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenuSeparator"], {}, void 0, false, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 253,
+                                                        lineNumber: 265,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenuItem"], {
@@ -689,19 +703,19 @@ function WorkflowsPage() {
                                                                     className: "mr-2 h-4 w-4"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                                    lineNumber: 256,
+                                                                    lineNumber: 268,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 "Editar"
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                            lineNumber: 255,
+                                                            lineNumber: 267,
                                                             columnNumber: 23
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 254,
+                                                        lineNumber: 266,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenuItem"], {
@@ -710,14 +724,14 @@ function WorkflowsPage() {
                                                                 className: "mr-2 h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                                lineNumber: 261,
+                                                                lineNumber: 273,
                                                                 columnNumber: 23
                                                             }, this),
                                                             "Duplicar"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 260,
+                                                        lineNumber: 272,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$dropdown$2d$menu$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["DropdownMenuItem"], {
@@ -728,43 +742,43 @@ function WorkflowsPage() {
                                                                 className: "mr-2 h-4 w-4"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                                lineNumber: 265,
+                                                                lineNumber: 277,
                                                                 columnNumber: 23
                                                             }, this),
                                                             "Excluir"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                        lineNumber: 264,
+                                                        lineNumber: 276,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                                lineNumber: 251,
+                                                lineNumber: 263,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                        lineNumber: 245,
+                                        lineNumber: 257,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                                lineNumber: 240,
+                                lineNumber: 252,
                                 columnNumber: 15
                             }, this)
                         ]
                     }, wf.id, true, {
                         fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                        lineNumber: 219,
+                        lineNumber: 231,
                         columnNumber: 13
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/src/app/(app)/workflows/page.tsx",
-                lineNumber: 217,
+                lineNumber: 229,
                 columnNumber: 9
             }, this) : renderEmptyState()
         ]
