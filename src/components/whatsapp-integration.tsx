@@ -79,9 +79,22 @@ export function WhatsappIntegration() {
 
     setIsLoading(true);
 
+    const loginTimeout = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        toast({
+            variant: 'destructive',
+            title: 'A janela foi fechada',
+            description: 'O processo de conexão foi interrompido antes de ser concluído.'
+        });
+      }
+    }, 2000); // Se a janela for fechada, reseta o botão após 2 segundos.
+
     window.FB.login(function(response: any) {
+      clearTimeout(loginTimeout); // Limpa o timeout se a API responder.
       if (response.authResponse) {
         console.log('Embedded signup finalizado, aguardando redirecionamento...');
+        // A página irá recarregar, então não é necessário mudar o estado de loading aqui.
       } else {
         console.log('User cancelled login or did not fully authorize.');
         toast({ variant: 'destructive', title: 'Conexão Cancelada', description: 'O processo de conexão não foi concluído.' });
