@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap, CheckCircle } from 'lucide-react';
@@ -87,7 +88,7 @@ export function WhatsappIntegration() {
         setIsLoading(false);
       }
     }, {
-      config_id: '821688910682652', // Usando o App ID como ID de Configuração.
+      config_id: '821688910682652',
       response_type: 'code',
       override_default_response_type: true,
       state: user.uid,
@@ -103,7 +104,14 @@ export function WhatsappIntegration() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-center space-y-4 p-8">
-        <img src="/whatsapp-banner.svg" alt="WhatsApp Integration" className="w-full max-w-sm mx-auto"/>
+        <Image 
+          src="https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/VitalLink%20connection%20wpp.webp?alt=media&token=b8334b82-b46c-4f73-9da8-e914da671b60" 
+          alt="Ilustração da Integração VitalLink com o WhatsApp" 
+          className="w-full max-w-sm mx-auto"
+          width={400}
+          height={400}
+          priority
+        />
         
         {integrationStatus === 'loading' && (
           <Button disabled className="w-full max-w-xs">
