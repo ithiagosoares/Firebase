@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from "next/link";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { doc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { AppNav } from "@/app/(app)/app-nav";
@@ -53,6 +53,7 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
   const { firestore, user } = useFirebase();
   const auth = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const pageTitle = getTitleFromPathname(pathname);
 
   const userDocRef = useMemoFirebase(() => { 
@@ -63,7 +64,9 @@ export default function AppLayoutClient({ children }: { children: React.ReactNod
   const { data: userData, isLoading: isUserDataLoading } = useDoc<User>(userDocRef);
 
   const handleLogout = () => {
-    signOut(auth);
+    signOut(auth).then(() => {
+      router.push('/');
+    });
   };
 
   const getInitials = (name: string | null | undefined) => {

@@ -13,6 +13,13 @@ export type User = {
   credits?: {
     remaining: number;
   };
+  clinicName?: string;
+  address?: string;
+  cnpj?: string;
+  contactEmail?: string;
+  dpoContact?: string;
+  allowConsentExport?: boolean;
+  retentionPeriod?: number;
 }
 
 export type Clinic = {

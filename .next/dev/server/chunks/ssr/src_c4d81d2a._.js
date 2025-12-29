@@ -203,9 +203,21 @@ function WhatsappIntegration() {
             return;
         }
         setIsLoading(true);
+        const loginTimeout = setTimeout(()=>{
+            if (isLoading) {
+                setIsLoading(false);
+                toast({
+                    variant: 'destructive',
+                    title: 'A janela foi fechada',
+                    description: 'O processo de conexão foi interrompido antes de ser concluído.'
+                });
+            }
+        }, 2000); // Se a janela for fechada, reseta o botão após 2 segundos.
         window.FB.login(function(response) {
+            clearTimeout(loginTimeout); // Limpa o timeout se a API responder.
             if (response.authResponse) {
                 console.log('Embedded signup finalizado, aguardando redirecionamento...');
+            // A página irá recarregar, então não é necessário mudar o estado de loading aqui.
             } else {
                 console.log('User cancelled login or did not fully authorize.');
                 toast({
@@ -230,20 +242,20 @@ function WhatsappIntegration() {
                         children: "Integração com WhatsApp"
                     }, void 0, false, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 101,
+                        lineNumber: 114,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardDescription"], {
                         children: "Conecte sua conta do WhatsApp Business para automatizar o envio de mensagens, lembretes e consentimentos diretamente da plataforma."
                     }, void 0, false, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 102,
+                        lineNumber: 115,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                lineNumber: 100,
+                lineNumber: 113,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["CardContent"], {
@@ -258,7 +270,7 @@ function WhatsappIntegration() {
                         priority: true
                     }, void 0, false, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 107,
+                        lineNumber: 120,
                         columnNumber: 9
                     }, this),
                     integrationStatus === 'loading' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -269,14 +281,14 @@ function WhatsappIntegration() {
                                 className: "mr-2 h-4 w-4 animate-spin"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 118,
+                                lineNumber: 131,
                                 columnNumber: 13
                             }, this),
                             "Verificando Status..."
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 117,
+                        lineNumber: 130,
                         columnNumber: 11
                     }, this),
                     integrationStatus === 'disconnected' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Button"], {
@@ -288,20 +300,20 @@ function WhatsappIntegration() {
                                 className: "mr-2 h-4 w-4 animate-spin"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 125,
+                                lineNumber: 138,
                                 columnNumber: 26
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$zap$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__default__as__Zap$3e$__["Zap"], {
                                 className: "mr-2 h-4 w-4"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 125,
+                                lineNumber: 138,
                                 columnNumber: 78
                             }, this),
                             isLoading ? 'Conectando...' : 'Conectar com WhatsApp'
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 124,
+                        lineNumber: 137,
                         columnNumber: 11
                     }, this),
                     integrationStatus === 'connected' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -311,7 +323,7 @@ function WhatsappIntegration() {
                                 className: "mx-auto h-8 w-8 text-green-600 mb-2"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 132,
+                                lineNumber: 145,
                                 columnNumber: 14
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -319,7 +331,7 @@ function WhatsappIntegration() {
                                 children: "WhatsApp Conectado"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 133,
+                                lineNumber: 146,
                                 columnNumber: 14
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -327,13 +339,13 @@ function WhatsappIntegration() {
                                 children: "Sua conta está ativa e pronta para enviar mensagens."
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 134,
+                                lineNumber: 147,
                                 columnNumber: 14
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 131,
+                        lineNumber: 144,
                         columnNumber: 12
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -348,26 +360,26 @@ function WhatsappIntegration() {
                                 children: "Termos de Serviço do WhatsApp Business"
                             }, void 0, false, {
                                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                                lineNumber: 139,
+                                lineNumber: 152,
                                 columnNumber: 45
                             }, this),
                             ". Uma janela pop-up da Meta será aberta para autenticação."
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/components/whatsapp-integration.tsx",
-                        lineNumber: 138,
+                        lineNumber: 151,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/whatsapp-integration.tsx",
-                lineNumber: 106,
+                lineNumber: 119,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/components/whatsapp-integration.tsx",
-        lineNumber: 99,
+        lineNumber: 112,
         columnNumber: 5
     }, this);
 }
