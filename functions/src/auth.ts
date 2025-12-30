@@ -18,7 +18,6 @@ const db = admin.firestore();
  * Cria um cliente correspondente no Stripe para futuras cobranças.
  */
 export const createCustomerOnSignup = functions
-  .region("southamerica-east1")
   .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .auth.user()
   .onCreate(async (user) => {

@@ -1,14 +1,4 @@
-[00:00:28.977] Server  LOG      ✓ Ready in 20.8s
-[00:00:32.253] Server  LOG      ○ Compiling / ...
-[00:01:46.158] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+[00:00:18.073] Server  LOG      ✓ Ready in 12.4s
+[00:00:28.257] Server  LOG      ○ Compiling / ...
+[00:01:47.079] Server  WARN     ⚠ Cross origin request detected from 9000-firebase-vitallink-vf-1762350575154.cluster-zhw3w37rxzgkutusbbhib6qhra.cloudworkstations.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-[00:17:26.689] Server  LOG      ✓ Compiled in 3.7s
-[00:22:06.502] Server  LOG      ✓ Compiled in 0ms
-[00:22:09.155] Browser WARN    Image with src "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Girl_calendar.png?alt=media&token=6c7dfd39-2a9d-4da9-afa7-4a2e31ea5409" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
-Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
-[00:23:12.735] Browser WARN    Image with src "https://firebasestorage.googleapis.com/v0/b/vitallink-c0b90.firebasestorage.app/o/Girl_calendar.png?alt=media&token=6c7dfd39-2a9d-4da9-afa7-4a2e31ea5409" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
-Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
-[00:28:51.298] Server  LOG      ✓ Compiled in 3.1s
-[00:56:21.822] Server  LOG      ✓ Compiled in 4s
-[01:15:08.075] Server  LOG      ✓ Compiled in 662ms
-[01:18:49.579] Server  LOG      ✓ Compiled in 471ms

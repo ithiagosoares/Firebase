@@ -42,7 +42,7 @@ interface ScheduledMessage { id: string; scheduledTime: Timestamp; status: "Agen
 // ==================================================================================================
 
 export const onWorkflowUpdate = onDocumentUpdated(
-  { document: "users/{userId}/workflows/{workflowId}", region: "southamerica-east1" },
+  { document: "users/{userId}/workflows/{workflowId}" },
   async (event) => {
     const before = event.data?.before.data() as Workflow;
     const after = event.data?.after.data() as Workflow;
@@ -77,7 +77,7 @@ export const onWorkflowUpdate = onDocumentUpdated(
 );
 
 export const onPatientAppointmentUpdate = onDocumentUpdated(
-  { document: "users/{userId}/patients/{patientId}", region: "southamerica-east1" },
+  { document: "users/{userId}/patients/{patientId}" },
   async (event) => {
     const before = event.data?.before.data() as Patient;
     const after = event.data?.after.data() as Patient;
@@ -108,7 +108,6 @@ export const onPatientAppointmentUpdate = onDocumentUpdated(
 export const sendScheduledMessages = onSchedule(
   { 
     schedule: "* * * * *",
-    region: "southamerica-east1", 
     timeZone: "America/Sao_Paulo",
     secrets: [whatsappApiUrl] 
   },
