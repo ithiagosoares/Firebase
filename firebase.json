@@ -20,19 +20,13 @@
         "STRIPE_WEBHOOK_SECRET"
       ]
     },
-    "rewrites": [
-      {
-        "source": "/backend/**",
-        "function": "backend"
-      },
-      {
-        "source": "**",
-        "run": {
-          "serviceId": "vitallink-backend",
-          "region": "us-central1"
-        }
+    "rewrites": [ {
+      "source": "**",
+      "run": {
+        "serviceId": "vitallink-backend",
+        "region": "us-central1"
       }
-    ]
+    } ]
   },
   "emulators": {
     "auth": {
