@@ -1,37 +1,52 @@
 
-import * as admin from "firebase-admin";
-admin.initializeApp();
+// V1 & V2 Imports
+import { onRequest } from 'firebase-functions/v2/https';
+import { onCall } from 'firebase-functions/v2/https';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 
-// Importa explicitamente CADA função de seu arquivo de origem com os nomes corretos.
+// --- Importações de Funções Reais do Diretório /functions ---
 
-// De ./test.ts
-import { ping } from "./test";
+// Gatilho de Autenticação
+import { createCustomerOnSignup } from './auth';
 
-// De ./auth.ts
-import { createCustomerOnSignup } from "./auth";
-
-// De ./api/webhooks.ts
-import { metaWebhook } from "./api/webhooks"; // CORRIGIDO: O nome era metaWebhook, não stripeWebhook.
-
-// De ./api/workflows.ts
-import { onWorkflowUpdate, onPatientAppointmentUpdate, sendScheduledMessages } from "./api/workflows"; // CORRIGIDO: Importando os gatilhos e a função agendada real.
-
-// NOTA: As funções de 'patients' e 'templates' não são importadas aqui porque elas são funções 'onCall',
-// que são um caso especial e não precisam ser exportadas da mesma forma que funções HTTP ou gatilhos de background.
-// O SDK do cliente as invoca diretamente pelo nome.
-
-// Exporta explicitamente cada função importada que é um gatilho HTTP, Pub/Sub, agendado ou de background.
-// Isso garante que o buildpack do App Hosting descubra cada uma delas sem ambiguidade.
-export {
-  // Funções HTTP (rotas públicas)
-  ping,
-  metaWebhook,
-
-  // Gatilhos de Background (Auth, Firestore, etc.)
-  createCustomerOnSignup,
+// Gatilhos do Firestore e Agendados
+import {
   onWorkflowUpdate,
   onPatientAppointmentUpdate,
+  sendScheduledMessages
+} from './api/workflows';
 
-  // Funções Agendadas
-  sendScheduledMessages,
-};
+// Webhook para a Meta (WhatsApp)
+import { metaWebhook } from './api/webhooks';
+
+// Função de Teste
+import { ping } from './test';
+
+// Funções chamáveis (Callable) para Pacientes
+import {
+  getPatients,
+  createPatient
+} from './api/patients';
+
+// Funções chamáveis (Callable) para Templates
+import {
+  createTemplate
+} from './api/templates';
+
+
+// --- EXPORTAÇÕES EXPLÍCITAS PARA DEPLOYMENT NO FIREBASE FUNCTIONS ---
+// Apenas as funções que devem ser implantadas como Cloud Functions são listadas aqui.
+// As API Routes do Next.js (como deletePatient, archivePatient, etc.) NÃO entram neste arquivo.
+
+// Triggers HTTP
+export { ping, metaWebhook };
+
+// Triggers Chamáveis (Callable)
+export { createCustomerOnSignup, getPatients, createPatient, createTemplate };
+
+// Triggers do Firestore
+export { onWorkflowUpdate, onPatientAppointmentUpdate };
+
+// Triggers Agendados
+export { sendScheduledMessages };
