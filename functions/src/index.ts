@@ -8,7 +8,7 @@ admin.initializeApp();
 import * as webhooks from "./api/webhooks";
 import * as workflows from "./api/workflows";
 import * as authTriggers from "./auth";
-import * as test from "./test"; // <-- ADICIONADO
+import * as test from "./test";
 
 // Opcional: Importa os placeholders para manter a estrutura completa, se desejar.
 // Se não houver funções neles ainda, pode-se comentar para evitar exports vazios.
@@ -21,12 +21,12 @@ import * as templates from "./api/templates";
  */
 
 // Exporta todos os endpoints da API (funções callable, onRequest)
-export const api = {
+export const backend = { // <-- RENOMEADO DE 'api' PARA 'backend'
   ...webhooks,    // Funções e webhooks do Stripe
   ...workflows,   // Gatilhos de Firestore e cron job para mensagens
   ...patients,    // Placeholder para futuras funções de pacientes
   ...templates,   // Placeholder para futuras funções de templates
-  ...test,        // <-- ADICIONADO: Função de teste para provar a implantação
+  ...test,        // Função de teste para provar a implantação
 };
 
 // Exporta todos os gatilhos (Auth, Firestore, etc.) que não são chamados diretamente pela API
