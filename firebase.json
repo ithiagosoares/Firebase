@@ -19,7 +19,11 @@
         "STRIPE_SECRET_KEY",
         "STRIPE_WEBHOOK_SECRET"
       ]
-    }
+    },
+    "rewrites": [ {
+      "source": "/api/**",
+      "function": "api"
+    } ]
   },
   "emulators": {
     "auth": {
