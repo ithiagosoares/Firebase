@@ -1,35 +1,14 @@
+import * as admin from 'firebase-admin';
 
-import * as admin from "firebase-admin";
-
-// Inicializa o Admin SDK globalmente
 admin.initializeApp();
 
-// Importa os módulos com as funções refatoradas
-import * as webhooks from "./api/webhooks";
-import * as workflows from "./api/workflows";
-import * as authTriggers from "./auth";
-import * as test from "./test";
+// Re-exporta todas as funções diretamente dos seus arquivos de origem.
+// A plataforma App Hosting irá descobrir e criar rotas para cada função HTTP individualmente
+// e registrar os outros gatilhos (como o de autenticação) corretamente.
 
-// Opcional: Importa os placeholders para manter a estrutura completa, se desejar.
-// Se não houver funções neles ainda, pode-se comentar para evitar exports vazios.
-import * as patients from "./api/patients";
-import * as templates from "./api/templates";
-
-/**
- * Agrupa e exporta todas as funções HTTP e Gatilhos para o Firebase.
- * Esta estrutura modular organiza o código por responsabilidade.
- */
-
-// Exporta todos os endpoints da API (funções callable, onRequest)
-export const backend = { // <-- RENOMEADO DE 'api' PARA 'backend'
-  ...webhooks,    // Funções e webhooks do Stripe
-  ...workflows,   // Gatilhos de Firestore e cron job para mensagens
-  ...patients,    // Placeholder para futuras funções de pacientes
-  ...templates,   // Placeholder para futuras funções de templates
-  ...test,        // Função de teste para provar a implantação
-};
-
-// Exporta todos os gatilhos (Auth, Firestore, etc.) que não são chamados diretamente pela API
-export const triggers = {
-  ...authTriggers, // Gatilho de criação de usuário
-};
+export * from './api/webhooks';
+export * from './api/workflows';
+export * from './api/patients';
+export * from './api/templates';
+export * from './auth';
+export * from './test';
