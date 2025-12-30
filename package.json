@@ -55,7 +55,7 @@
     "genkit": "^1.25.0",
     "lucide-react": "^0.475.0",
     "markdown-it": "^14.1.0",
-    "next": "^16.0.8",
+    "next": "^14.2.0",
     "patch-package": "^8.0.0",
     "protobufjs": "^7.5.4",
     "raw-body": "^2.5.2",
