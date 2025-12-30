@@ -21,6 +21,8 @@ export const createCustomerOnSignup = functions
   .runWith({ secrets: ["STRIPE_SECRET_KEY"] })
   .auth.user()
   .onCreate(async (user) => {
+    functions.logger.info(`[PONTO DE PROVA] Gatilho createCustomerOnSignup ACIONADO para o usuário: ${user.uid}`);
+
     const email = user.email;
     const uid = user.uid;
 
