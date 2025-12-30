@@ -1,14 +1,19 @@
-import * as admin from 'firebase-admin';
 
+import * as admin from "firebase-admin";
 admin.initializeApp();
 
-// Re-exporta todas as funções diretamente dos seus arquivos de origem.
-// A plataforma App Hosting irá descobrir e criar rotas para cada função HTTP individualmente
-// e registrar os outros gatilhos (como o de autenticação) corretamente.
+// Importa explicitamente cada função de seu arquivo de origem.
+import { ping } from "./test";
+import { createCustomerOnSignup } from "./auth";
+import { stripeWebhook } from "./api/webhooks";
+import { processWeeklyMessages } from "./api/workflows";
+// Adicione outras importações explícitas aqui, se necessário.
 
-export * from './api/webhooks';
-export * from './api/workflows';
-export * from './api/patients';
-export * from './api/templates';
-export * from './auth';
-export * from './test';
+// Exporta explicitamente cada função importada.
+// Isso garante que o buildpack do App Hosting descubra cada uma delas sem ambiguidade.
+export {
+  ping,
+  createCustomerOnSignup,
+  stripeWebhook,
+  processWeeklyMessages,
+};
