@@ -1,9 +1,22 @@
+
 env:
   # Secrets for the backend, sourced from Secret Manager
   - variable: STRIPE_SECRET_KEY
     secret: STRIPE_SECRET_KEY
   - variable: STRIPE_WEBHOOK_SECRET
     secret: STRIPE_WEBHOOK_SECRET
+  - variable: CRON_SECRET
+    secret: CRON_JOB_SECRET
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
+  - variable: META_APP_SECRET
+    secret: META_APP_SECRET
+  - variable: META_WEBHOOK_VERIFY_TOKEN
+    secret: META_WEBHOOK_VERIFY_TOKEN
+  - variable: WHATSAPP_ACCESS_TOKEN
+    secret: WHATSAPP_ACCESS_TOKEN
+  - variable: WHATSAPP_PHONE_NUMBER_ID
+    secret: WHATSAPP_PHONE_NUMBER_ID
 
   # Public variables for the frontend client
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
