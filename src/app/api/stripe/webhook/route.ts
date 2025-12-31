@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return new Response("Stripe não está configurado neste ambiente.", { status: 503 });
   }
 
-  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2024-04-10" });
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-02-24.acacia" });
   const signature = (await headers()).get("stripe-signature");
 
   let event: Stripe.Event;
