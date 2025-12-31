@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/user/VitalLink-VF/src/app/%28auth%29/layout.tsx"],"sourcesContent":["\nimport { FirebaseClientProvider } from \"@/firebase\";\nimport Icon from \"@/app/icon\";\nimport type { ReactNode } from \"react\";\n\nexport default function AuthLayout({ children }: { children: ReactNode }) {\n  return (\n    <FirebaseClientProvider>\n      <main className=\"flex min-h-screen flex-col items-center justify-center bg-background p-4\">\n        {children}\n      </main>\n    </FirebaseClientProvider>\n  );\n}\n"],"names":[],"mappings":";;;;;AACA;;;AAIe,SAAS,WAAW,EAAE,QAAQ,EAA2B;IACtE,qBACE,8OAAC,kJAAsB;kBACrB,cAAA,8OAAC;YAAK,WAAU;sBACb;;;;;;;;;;;AAIT"}}]
-}

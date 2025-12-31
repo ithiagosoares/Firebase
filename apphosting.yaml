@@ -1,3 +1,4 @@
+
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBcS5kZ_JPyMEGx938EAsRpai2WrPtOWQA

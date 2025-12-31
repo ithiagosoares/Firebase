@@ -173,6 +173,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/(auth)/forgot-password/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/forgot-password">> = Specific
+  const handler = {} as typeof import("../../src/app/(auth)/forgot-password/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/(auth)/login/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/login">> = Specific
@@ -245,10 +254,10 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../src/app/api/send-message/route.ts
+// Validate ../../src/app/api/ping/route.ts
 {
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/send-message">> = Specific
-  const handler = {} as typeof import("../../src/app/api/send-message/route.js")
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/ping">> = Specific
+  const handler = {} as typeof import("../../src/app/api/ping/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -263,37 +272,10 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../src/app/api/twilio/callback/route.ts
+// Validate ../../src/app/api/whatsapp-api/webhook/route.ts
 {
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/twilio/callback">> = Specific
-  const handler = {} as typeof import("../../src/app/api/twilio/callback/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
-// Validate ../../src/app/api/twilio/embedded-signup/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/twilio/embedded-signup">> = Specific
-  const handler = {} as typeof import("../../src/app/api/twilio/embedded-signup/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
-// Validate ../../src/app/api/twilio/status/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/twilio/status">> = Specific
-  const handler = {} as typeof import("../../src/app/api/twilio/status/route.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
-// Validate ../../src/app/api/twilio/webhook/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/twilio/webhook">> = Specific
-  const handler = {} as typeof import("../../src/app/api/twilio/webhook/route.js")
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/whatsapp-api/webhook">> = Specific
+  const handler = {} as typeof import("../../src/app/api/whatsapp-api/webhook/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
