@@ -8,9 +8,9 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Mapeia os IDs de PREÇO (price ID) da Stripe para os nomes dos planos internos.
 const PLAN_MAP = {
-  "price_1SaEtIEEZjNwuQwBmR30ax57": "Essencial", 
-  "price_1SZaPNEEZjNwuQwBIP1smLIm": "Profissional",
-  "price_1SaEyPEEZjNwuQwBGrutOkgy": "Premium",
+  "price_1Sl73SEEZjNwuQwB7GmKavAu": "Essencial", 
+  "price_1Sl73CEEZjNwuQwB1vSGMOED": "Profissional",
+  "price_1Sl73fEEZjNwuQwBaAdKiJp4": "Premium",
 };
 
 if (!stripeSecretKey || !webhookSecret) {
