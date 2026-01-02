@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const userRef = db().collection("users").doc(userId); // CORRIGIDO: de 'clinics' para 'users'
+        const userRef = db().collection("users").doc(userId); // CORRIGIDO: db() como função
         
-        await db().runTransaction(async (transaction) => {
+        await db().runTransaction(async (transaction) => { // CORRIGIDO: db() como função
             transaction.set(userRef, {
                 plan: planName,
-                monthlyUsage: 0, // Zera o contador de uso no novo ciclo
+                monthlyUsage: 0, 
                 stripeCustomerId: customerId,
-                stripePriceId: priceId, // Salva o priceId para referência futura
+                stripePriceId: priceId, 
             }, { merge: true });
         });
 
@@ -100,8 +100,7 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            // Encontra o usuário pelo ID do cliente Stripe
-            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1); // CORRIGIDO: de 'clinics' para 'users'
+            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1); // CORRIGIDO: db() como função
             const userSnapshot = await usersQuery.get();
 
             if (userSnapshot.empty) {
@@ -111,8 +110,8 @@ export async function POST(req: NextRequest) {
 
             const userDoc = userSnapshot.docs[0];
             await userDoc.ref.update({
-                plan: planName, // Garante que o plano está correto
-                monthlyUsage: 0, // Zera o contador na renovação!
+                plan: planName, 
+                monthlyUsage: 0, 
             });
 
             console.log(`✅ Renovação de assinatura processada para ${userDoc.id}. Plano [${planName}] revalidado e uso zerado.`);
