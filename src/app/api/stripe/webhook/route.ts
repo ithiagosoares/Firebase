@@ -6,9 +6,8 @@ import { db } from "@/lib/firebase-admin";
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-// Mapeia os IDs de PREÇO (price ID) da Stripe para os nomes dos planos internos.
 const PLAN_MAP = {
-  "price_1Sl73SEEZjNwuQwB7GmKavAu": "Essencial", 
+  "price_1Sl73SEEZjNwuQwB7GmKavAu": "Essencial",
   "price_1Sl73CEEZjNwuQwB1vSGMOED": "Profissional",
   "price_1Sl73fEEZjNwuQwBaAdKiJp4": "Premium",
 };
@@ -35,49 +34,45 @@ export async function POST(req: NextRequest) {
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  // --- Manipulação do Evento ---
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const { client_reference_id: userId, customer: customerId } = session;
 
       if (!userId || !customerId) {
-        console.error("❌ Faltando userId (client_reference_id) ou customerId na sessão de checkout.");
+        console.error("Webhook 'checkout.session.completed' sem userId ou customerId.");
         return new Response("Dados essenciais ausentes na sessão.", { status: 200 });
       }
 
       const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
       const priceId = lineItems.data[0]?.price?.id;
-
-      if (!priceId) {
-        console.error(`❌ Não foi possível encontrar o priceId para a sessão de checkout ${session.id}`);
-        return new Response("ID do preço não encontrado.", { status: 200 });
-      }
-
-      const planName = PLAN_MAP[priceId as keyof typeof PLAN_MAP];
+      const planName = priceId ? PLAN_MAP[priceId as keyof typeof PLAN_MAP] : null;
 
       if (!planName) {
-        console.warn(`🔔 Webhook recebeu um priceId não mapeado: ${priceId}`);
+        console.warn(`Webhook recebeu priceId não mapeado: ${priceId}`);
         return new Response("Plano não reconhecido.", { status: 200 });
       }
 
       try {
-        const userRef = db().collection("users").doc(userId); // CORRIGIDO: db() como função
-        
-        await db().runTransaction(async (transaction) => { // CORRIGIDO: db() como função
-            transaction.set(userRef, {
-                plan: planName,
-                monthlyUsage: 0, 
-                stripeCustomerId: customerId,
-                stripePriceId: priceId, 
-            }, { merge: true });
-        });
+        console.log(`Iniciando atualização do Firestore para o usuário: ${userId}`);
+        const userRef = db().collection("users").doc(userId);
 
-        console.log(`✅ Plano atualizado com sucesso para [${planName}] para o usuário ${userId}.`);
+        await userRef.set(
+          {
+            plan: planName,
+            stripeCustomerId: customerId,
+            stripePriceId: priceId,
+            monthlyUsage: 0, // Resetando o uso no início do plano
+            updatedAt: new Date(),
+          },
+          { merge: true }
+        );
+
+        console.log(`✅ Firestore atualizado com sucesso: usuário=${userId}, plano=${planName}`);
 
       } catch (error: any) {
-        console.error(`🔥 Erro ao atualizar o plano no Firestore para o usuário ${userId}:`, error.message);
-        return new Response("Erro interno ao processar a assinatura.", { status: 500 });
+        console.error(`🔥 Erro CRÍTICO ao atualizar Firestore para userId=${userId}`, error);
+        return new Response("Erro ao persistir dados no banco de dados.", { status: 500 });
       }
 
       break;
@@ -86,21 +81,9 @@ export async function POST(req: NextRequest) {
     case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
-        const priceId = invoice.lines.data[0]?.price?.id;
-
-        if (!customerId || !priceId) {
-            console.error('❌ invoice.payment_succeeded: Faltando customerId ou priceId.');
-            return new Response('Dados essenciais da fatura ausentes.', { status: 200 });
-        }
-
-        const planName = PLAN_MAP[priceId as keyof typeof PLAN_MAP];
-        if (!planName) {
-            console.warn(`🔔 invoice.payment_succeeded: PriceId não mapeado: ${priceId}`);
-            return new Response("Plano não reconhecido.", { status: 200 });
-        }
-
+        
         try {
-            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1); // CORRIGIDO: db() como função
+            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1);
             const userSnapshot = await usersQuery.get();
 
             if (userSnapshot.empty) {
@@ -110,14 +93,14 @@ export async function POST(req: NextRequest) {
 
             const userDoc = userSnapshot.docs[0];
             await userDoc.ref.update({
-                plan: planName, 
-                monthlyUsage: 0, 
+                monthlyUsage: 0, // Zera o contador na renovação
+                updatedAt: new Date(),
             });
 
-            console.log(`✅ Renovação de assinatura processada para ${userDoc.id}. Plano [${planName}] revalidado e uso zerado.`);
+            console.log(`✅ Renovação processada para ${userDoc.id}. Uso zerado.`);
 
         } catch (error: any) {
-            console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error.message);
+            console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error);
             return new Response("Erro interno ao processar a renovação.", { status: 500 });
         }
 
