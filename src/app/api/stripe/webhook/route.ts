@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
-import { db } from "@/lib/firebase-admin"; // Alterado: Importa o getter 'db'
+import { db } from "@/lib/firebase-admin";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -62,10 +62,10 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const clinicRef = db().collection("clinics").doc(userId); // Alterado: usa db()
+        const userRef = db().collection("users").doc(userId); // CORRIGIDO: de 'clinics' para 'users'
         
-        await db().runTransaction(async (transaction) => { // Alterado: usa db()
-            transaction.set(clinicRef, {
+        await db().runTransaction(async (transaction) => {
+            transaction.set(userRef, {
                 plan: planName,
                 monthlyUsage: 0, // Zera o contador de uso no novo ciclo
                 stripeCustomerId: customerId,
@@ -100,22 +100,22 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-            // Encontra a clínica pelo ID do cliente Stripe
-            const clinicsQuery = db().collection('clinics').where('stripeCustomerId', '==', customerId).limit(1); // Alterado: usa db()
-            const clinicSnapshot = await clinicsQuery.get();
+            // Encontra o usuário pelo ID do cliente Stripe
+            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1); // CORRIGIDO: de 'clinics' para 'users'
+            const userSnapshot = await usersQuery.get();
 
-            if (clinicSnapshot.empty) {
-                console.error(`❌ invoice.payment_succeeded: Nenhuma clínica encontrada para o stripeCustomerId: ${customerId}`);
+            if (userSnapshot.empty) {
+                console.error(`❌ invoice.payment_succeeded: Nenhum usuário encontrado para o stripeCustomerId: ${customerId}`);
                 return new Response('Usuário não encontrado.', { status: 200 });
             }
 
-            const clinicDoc = clinicSnapshot.docs[0];
-            await clinicDoc.ref.update({
+            const userDoc = userSnapshot.docs[0];
+            await userDoc.ref.update({
                 plan: planName, // Garante que o plano está correto
                 monthlyUsage: 0, // Zera o contador na renovação!
             });
 
-            console.log(`✅ Renovação de assinatura processada para ${clinicDoc.id}. Plano [${planName}] revalidado e uso zerado.`);
+            console.log(`✅ Renovação de assinatura processada para ${userDoc.id}. Plano [${planName}] revalidado e uso zerado.`);
 
         } catch (error: any) {
             console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error.message);
