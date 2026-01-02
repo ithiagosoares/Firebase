@@ -232,19 +232,19 @@ export default function SettingsPage() {
       isCurrent: userData?.plan === "Free", actionText: "Plano Atual"
     },
     {
-      id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_eVa9CEb6A9M2gPKeUV",
+      id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_4gMfZhaXz9JN3Bh0R9ffy00",
       features: ["Até 150 conversas/mês", "Fluxos de automação", "Templates de mensagens", "Suporte via e-mail"],
       isCurrent: userData?.plan === "Essencial", actionText: "Gerenciar Assinatura",
       actionExternal: true
     },
     {
-      id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", paymentLink: "https://buy.stripe.com/test_28o52s0ie2bA0i45kn",
+      id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", paymentLink: "https://buy.stripe.com/test_5kQ4gz4zb5tx8VB9nFffy01",
       features: ["Até 300 conversas/mês", "Tudo do Plano Essencial", "Relatórios de envio", "Suporte prioritário"],
       isCurrent: userData?.plan === "Profissional", actionText: "Gerenciar Assinatura",
       actionExternal: true
     },
     {
-      id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_9AQg0C2qmbQ61m8aF1",
+      id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_9B6dR9fdP7BF4Fl6btffy02",
       features: ["Até 750 conversas/mês", "Tudo do Plano Profissional", "API de integração (Em Breve)", "Gerente de conta dedicado"],
       isCurrent: userData?.plan === "Premium", actionText: "Gerenciar Assinatura",
       actionExternal: true
