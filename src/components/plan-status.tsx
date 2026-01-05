@@ -1,19 +1,20 @@
-"use client"
+'use client'
 
 import { useMemo } from "react"
 import Link from "next/link"
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
-import { useCollection } from "@/firebase/firestore/use-collection"
 import { useDoc } from "@/firebase/firestore/use-doc"
-import { collection, doc } from "firebase/firestore"
-import { type User, type ScheduledMessage } from "@/lib/types"
+import { doc } from "firebase/firestore"
+import { type User } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
-const planLimits = {
-  Trial: 10,
-  Profissional: 200,
-  Equipe: 500,
+// Mapeia o ID do plano para a quantidade total de créditos
+const planCreditLimits = {
+  Free: 5,
+  Essencial: 150,
+  Profissional: 300,
+  Premium: 750,
 }
 
 export function PlanStatus() {
@@ -25,48 +26,42 @@ export function PlanStatus() {
     return doc(firestore, "users", authUser.uid)
   }, [firestore, authUser])
 
-  const { data: userData, isLoading: isUserDataLoading } = useDoc<User>(userDocRef)
+  // O hook useDoc já escuta as atualizações em tempo real
+  const { data: userData, isLoading } = useDoc<User>(userDocRef)
 
-  const messagesCollection = useMemoFirebase(() => {
-    if (!authUser) return null
-    return collection(firestore, `users/${authUser.uid}/scheduledMessages`)
-  }, [firestore, authUser])
-  
-  const { data: messages, isLoading: isLoadingMessages } = useCollection<ScheduledMessage>(messagesCollection)
-
-  const { currentPlan, remainingMessages, messageLimit } = useMemo(() => {
-    const plan = (userData as any)?.plan || "Trial"
-    const limit = planLimits[plan as keyof typeof planLimits] || 10
-    const sent = messages?.filter(m => m.status === 'Enviado').length || 0
-    const remaining = limit - sent;
+  const { currentPlan, remainingCredits, creditLimit } = useMemo(() => {
+    // Usa os dados do Firestore como fonte da verdade
+    const plan = userData?.plan || "Free"
+    const remaining = userData?.credits?.remaining ?? 0
+    const limit = planCreditLimits[plan as keyof typeof planCreditLimits] || 5
+    
     return {
       currentPlan: plan,
-      remainingMessages: remaining,
-      messageLimit: limit,
+      remainingCredits: remaining,
+      creditLimit: limit,
     }
-  }, [userData, messages])
-
-  const isLoading = isUserDataLoading || isLoadingMessages
+  }, [userData])
 
   if (isLoading) {
     return <Skeleton className="h-8 w-48 rounded-lg" />
   }
   
-  const isLowOnMessages = remainingMessages / messageLimit <= 0.2;
+  // Alerta de créditos baixos quando estiver com 20% ou menos
+  const isLowOnCredits = creditLimit > 0 && (remainingCredits / creditLimit) <= 0.2;
 
   return (
-    <Link href="/settings">
+    <Link href="/settings#plans">
       <div
         className={cn(
           "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
-          isLowOnMessages 
+          isLowOnCredits 
             ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
             : "bg-accent text-accent-foreground hover:bg-accent/80"
         )}
       >
         <span>Plano {currentPlan}:</span>
-        <span className={cn(isLowOnMessages ? "text-destructive font-bold" : "text-muted-foreground")}>
-          {remainingMessages} restantes
+        <span className={cn("font-bold", isLowOnCredits ? "text-destructive" : "text-primary")}>
+          {remainingCredits} créditos
         </span>
       </div>
     </Link>

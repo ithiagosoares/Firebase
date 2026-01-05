@@ -353,7 +353,25 @@ export default function SettingsPage() {
                             <ul className="space-y-2 text-sm text-muted-foreground">{plan.features.map((feature, index) => <li key={index} className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/>{feature}</li>)}</ul>
                         </CardHeader>
                         <CardFooter>
-                            {plan.isCurrent ? <Button variant="outline" className="w-full" disabled>Plano Atual</Button> : plan.priceId ? <Button className="w-full" disabled={!!isRedirecting} onClick={() => handleSubscribe(plan.priceId!, plan.id)}>{isRedirecting === plan.id ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</> : <><Zap className="mr-2 h-4 w-4"/> Fazer Upgrade</>}</Button> : <Button variant="secondary" className="w-full" disabled>Plano Atual</Button>}
+                            {plan.isCurrent ? (
+                                <Button variant="outline" className="w-full" disabled>Plano Atual</Button>
+                            ) : plan.priceId ? (
+                                <Button 
+                                    className="w-full"
+                                    disabled={!!isRedirecting}
+                                    onClick={() => handleSubscribe(plan.priceId!, plan.id)}
+                                >
+                                    {isRedirecting === plan.id ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
+                                    ) : (
+                                        <><Zap className="mr-2 h-4 w-4"/> Fazer Upgrade</>
+                                    )}
+                                </Button>
+                            ) : (
+                                <Button variant="secondary" className="w-full" disabled>
+                                    Não disponível
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 ))}
