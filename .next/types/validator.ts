@@ -263,6 +263,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/stripe/billing-history/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/stripe/billing-history">> = Specific
+  const handler = {} as typeof import("../../src/app/api/stripe/billing-history/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/stripe/create-checkout-session/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/stripe/create-checkout-session">> = Specific

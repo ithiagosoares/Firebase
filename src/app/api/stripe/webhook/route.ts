@@ -1,3 +1,4 @@
+
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
@@ -6,10 +7,18 @@ import { db } from "@/lib/firebase-admin";
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+// Mapeamento de Price ID para o nome do plano
 const PLAN_MAP = {
   "price_1Sl73SEEZjNwuQwB7GmKavAu": "Essencial",
   "price_1Sl73CEEZjNwuQwB1vSGMOED": "Profissional",
   "price_1Sl73fEEZjNwuQwBaAdKiJp4": "Premium",
+};
+
+// Mapeamento de Price ID para a quantidade de créditos
+const CREDITS_MAP = {
+  "price_1Sl73SEEZjNwuQwB7GmKavAu": 150,
+  "price_1Sl73CEEZjNwuQwB1vSGMOED": 300,
+  "price_1Sl73fEEZjNwuQwBaAdKiJp4": 750,
 };
 
 if (!stripeSecretKey || !webhookSecret) {
@@ -47,6 +56,7 @@ export async function POST(req: NextRequest) {
       const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
       const priceId = lineItems.data[0]?.price?.id;
       const planName = priceId ? PLAN_MAP[priceId as keyof typeof PLAN_MAP] : null;
+      const credits = priceId ? CREDITS_MAP[priceId as keyof typeof CREDITS_MAP] : 0;
 
       if (!planName) {
         console.warn(`Webhook recebeu priceId não mapeado: ${priceId}`);
@@ -62,13 +72,16 @@ export async function POST(req: NextRequest) {
             plan: planName,
             stripeCustomerId: customerId,
             stripePriceId: priceId,
-            monthlyUsage: 0, // Resetando o uso no início do plano
+            credits: {
+              remaining: credits,
+            },
+            monthlyUsage: 0,
             updatedAt: new Date(),
           },
           { merge: true }
         );
 
-        console.log(`✅ Firestore atualizado com sucesso: usuário=${userId}, plano=${planName}`);
+        console.log(`✅ Firestore atualizado com sucesso: usuário=${userId}, plano=${planName}, créditos=${credits}`);
 
       } catch (error: any) {
         console.error(`🔥 Erro CRÍTICO ao atualizar Firestore para userId=${userId}`, error);
@@ -92,12 +105,19 @@ export async function POST(req: NextRequest) {
             }
 
             const userDoc = userSnapshot.docs[0];
+            const userData = userDoc.data();
+            const priceId = userData.stripePriceId as keyof typeof CREDITS_MAP | undefined;
+            const credits = priceId ? CREDITS_MAP[priceId] : 0;
+
             await userDoc.ref.update({
                 monthlyUsage: 0, // Zera o contador na renovação
+                credits: {
+                  remaining: credits, // Reseta os créditos na renovação
+                },
                 updatedAt: new Date(),
             });
 
-            console.log(`✅ Renovação processada para ${userDoc.id}. Uso zerado.`);
+            console.log(`✅ Renovação processada para ${userDoc.id}. Créditos resetados para ${credits}.`);
 
         } catch (error: any) {
             console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error);

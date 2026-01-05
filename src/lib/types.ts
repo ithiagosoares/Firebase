@@ -20,6 +20,8 @@ export type User = {
   dpoContact?: string;
   allowConsentExport?: boolean;
   retentionPeriod?: number;
+  stripeCustomerId?: string; // ID do cliente no Stripe
+  stripePriceId?: string;    // ID do preço (plano) no Stripe
 }
 
 export type Clinic = {
