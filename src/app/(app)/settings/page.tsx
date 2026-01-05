@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect } from "react"
 import { usePathname, useRouter } from "next/navigation";
-import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound, Mail } from "lucide-react"
+import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound, Mail, Zap } from "lucide-react"
 import Link from "next/link"
 
 // Tipos locais
@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [isSubmittingPolicy, setIsSubmittingPolicy] = useState(false);
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState<string | null>(null);
 
   // User Profile State
   const [firstName, setFirstName] = useState("")
@@ -225,29 +226,72 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSubscribe = async (priceId: string, planId: string) => {
+    if (!authUser) {
+        toast({
+            variant: "destructive",
+            title: "Erro de Autenticação",
+            description: "Você precisa estar logado para assinar um plano.",
+        });
+        return;
+    }
+
+    setIsRedirecting(planId);
+
+    try {
+        const res = await fetch('/api/stripe/create-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                priceId: priceId,
+                userId: authUser.uid,
+            }),
+        });
+
+        if (!res.ok) {
+            const { error } = await res.json();
+            throw new Error(error || 'Falha ao iniciar o processo de pagamento.');
+        }
+
+        const { url } = await res.json();
+        if (url) {
+            window.location.href = url;
+        } else {
+            throw new Error('A URL de redirecionamento não foi recebida.');
+        }
+    } catch (error: any) {
+        console.error("Error creating checkout session:", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao Assinar",
+            description: error.message || "Não foi possível redirecionar para o pagamento. Tente novamente.",
+        });
+        setIsRedirecting(null);
+    }
+  };
+
   const plans = [
     {
-      id: "Free", name: "Free", price: "R$ 0", priceDescription: "", paymentLink: "",
+      id: "Free", name: "Free", price: "R$ 0", priceDescription: "",
       features: ["Até 5 conversas/mês", "Funcionalidades básicas"],
       isCurrent: userData?.plan === "Free", actionText: "Plano Atual"
     },
     {
-      id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_4gMfZhaXz9JN3Bh0R9ffy00",
+      id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", priceId: "price_1Sl73SEEZjNwuQwB7GmKavAu",
       features: ["Até 150 conversas/mês", "Fluxos de automação", "Templates de mensagens", "Suporte via e-mail"],
-      isCurrent: userData?.plan === "Essencial", actionText: "Gerenciar Assinatura",
-      actionExternal: true
+      isCurrent: userData?.plan === "Essencial"
     },
     {
-      id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", paymentLink: "https://buy.stripe.com/test_5kQ4gz4zb5tx8VB9nFffy01",
+      id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", priceId: "price_1Sl73CEEZjNwuQwB1vSGMOED",
       features: ["Até 300 conversas/mês", "Tudo do Plano Essencial", "Relatórios de envio", "Suporte prioritário"],
-      isCurrent: userData?.plan === "Profissional", actionText: "Gerenciar Assinatura",
-      actionExternal: true
+      isCurrent: userData?.plan === "Profissional"
     },
     {
-      id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", paymentLink: "https://buy.stripe.com/test_9B6dR9fdP7BF4Fl6btffy02",
+      id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", priceId: "price_1Sl73fEEZjNwuQwBaAdKiJp4",
       features: ["Até 750 conversas/mês", "Tudo do Plano Profissional", "API de integração (Em Breve)", "Gerente de conta dedicado"],
-      isCurrent: userData?.plan === "Premium", actionText: "Gerenciar Assinatura",
-      actionExternal: true
+      isCurrent: userData?.plan === "Premium"
     },
   ];
 
@@ -374,12 +418,26 @@ export default function SettingsPage() {
                             </ul>
                         </CardHeader>
                         <CardFooter>
-                            <Button asChild className="w-full" disabled={plan.isCurrent} variant={plan.isCurrent ? 'secondary' : 'default'}>
-                                <Link href={plan.isCurrent ? '#' : plan.paymentLink} target={plan.actionExternal ? '_blank' : '_self'}>
-                                    {plan.actionText}
-                                    {plan.actionExternal && <ExternalLink className="ml-2 h-4 w-4"/>}
-                                </Link>
-                            </Button>
+                            {plan.isCurrent ? (
+                                <Button asChild className="w-full" variant="outline">
+                                    <Link href="https://billing.stripe.com/p/login/test_7sI9CEd6A6A06k0288" target="_blank">
+                                        <ExternalLink className="mr-2 h-4 w-4"/>
+                                        Gerenciar Assinatura
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <Button 
+                                    className="w-full"
+                                    disabled={!!isRedirecting}
+                                    onClick={() => handleSubscribe(plan.priceId!, plan.id)}
+                                >
+                                    {isRedirecting === plan.id ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
+                                    ) : (
+                                        <><Zap className="mr-2 h-4 w-4"/> Fazer Upgrade</>
+                                    )}
+                                </Button>
+                            )}
                         </CardFooter>
                     </Card>
                 ))}
@@ -444,7 +502,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                     <Label htmlFor="retentionPeriod">Período de Retenção de Dados de Pacientes (em anos)</Label>
                     <Select value={retentionPeriod} onValueChange={setRetentionPeriod}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue></SelectValue></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="1">1 ano</SelectItem>
                             <SelectItem value="2">2 anos</SelectItem>
