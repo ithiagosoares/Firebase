@@ -73,27 +73,36 @@ export function WhatsappIntegration() {
 
 // Dentro de whatsapp-integration.tsx
 
+// Dentro de src/components/whatsapp-integration.tsx
+
   const handleLogin = () => {
+    // 1. Verificações iniciais
     if (!isSdkLoaded || !user) {
-      toast({ title: "Aguarde", description: "Carregando integração..." });
+      toast({ title: "Aguarde", description: "Carregando integração com a Meta..." });
       return;
     }
 
     setIsLoading(true);
 
+    // 2. Timeout de segurança (Crucial para não travar o botão se o user fechar o popup)
+    const loginTimeout = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        // Não mostramos erro aqui para não assustar, as vezes é só demora da rede
+      }
+    }, 60000); // 1 minuto de tolerância
+
+    // 3. Chamada de Login SEM config_id, mas COM scopes manuais
     window.FB.login(async function(response: any) {
+      clearTimeout(loginTimeout); // Cancelamos o timeout pois houve resposta
+
       if (response.authResponse) {
-        // O usuário autorizou e temos um CODE (graças ao config_id)
-        // O SDK do JS as vezes retorna o code dentro de authResponse ou precisamos capturá-lo de outra forma.
-        // No fluxo 'override_default_response_type: true' com 'response_type: code', o code vem no response.
-        
+        // Tenta pegar o código de várias formas possíveis que o SDK retorna
         const code = response.code || response.authResponse.code; 
-        // Nota: As vezes a Meta muda onde o code vem. Se code for undefined, verifique response.authResponse.accessToken 
-        // Mas para System User, precisamos do CODE.
 
         if (code) {
             try {
-                // Chama nossa API para trocar o code pelo token permanente
+                // Chama nosso backend para trocar o CODE pelo TOKEN permanente
                 const res = await fetch('/api/whatsapp/exchange-token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -101,32 +110,43 @@ export function WhatsappIntegration() {
                 });
 
                 if (res.ok) {
-                    toast({ title: "Sucesso!", description: "WhatsApp conectado com sucesso." });
+                    const data = await res.json();
+                    toast({ 
+                        title: "Sucesso!", 
+                        description: `WhatsApp conectado: ${data.phoneNumber || 'Número salvo'}` 
+                    });
                     setIntegrationStatus('connected');
-                    // Opcional: window.location.reload();
                 } else {
-                    throw new Error("Falha na troca de token");
+                    throw new Error("Falha na troca de token no servidor");
                 }
             } catch (error) {
-                console.error(error);
-                toast({ variant: "destructive", title: "Erro", description: "Falha ao salvar conexão no servidor." });
+                console.error("Erro no backend:", error);
+                toast({ variant: "destructive", title: "Erro de Conexão", description: "Falha ao salvar os dados. Tente novamente." });
             }
         } else {
-            console.error("Code não recebido da Meta", response);
-            toast({ variant: "destructive", title: "Erro", description: "Não recebemos o código de autorização da Meta." });
+            console.error("Code não recebido. Resposta bruta:", response);
+            // Se não veio code, pode ter vindo apenas o token temporário, o que não serve para System User
+            toast({ variant: "destructive", title: "Erro de Permissão", description: "Não recebemos o código de autorização necessário." });
         }
 
       } else {
-        console.log('User cancelled login or did not fully authorize.');
+        console.log('Usuário cancelou o login ou fechou a janela.');
+        toast({ variant: "default", title: "Cancelado", description: "O processo foi cancelado." });
       }
-      setIsLoading(false);
+      
+      setIsLoading(false); // Destrava o botão
     }, {
-      config_id: '821688910682652', // Seu Config ID
-      response_type: 'code',
+      // --- AQUI ESTÁ A MUDANÇA MÁGICA ---
+      // Em vez de config_id, usamos os scopes manuais:
+      scope: 'email,public_profile,whatsapp_business_management,whatsapp_business_messaging',
+      
+      // Mantemos isso para dizer que queremos um CODE (para trocar no backend), não um token solto
+      response_type: 'code', 
       override_default_response_type: true,
+      
+      // Isso é OBRIGATÓRIO para abrir o fluxo de "Cadastro Incorporado" (Embedded Signup)
       extras: {
         setup: {
-          // Isso garante que o usuário configure um número se não tiver
           ...({})
         }
       }
