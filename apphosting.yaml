@@ -9,8 +9,6 @@ env:
     secret: CRON_JOB_SECRET
   - variable: FIREBASE_SERVICE_ACCOUNT_KEY
     secret: FIREBASE_SERVICE_ACCOUNT_KEY
-  - variable: META_APP_SECRET
-    secret: META_APP_SECRET
   - variable: META_WEBHOOK_VERIFY_TOKEN
     secret: META_WEBHOOK_VERIFY_TOKEN
   - variable: WHATSAPP_ACCESS_TOKEN
