@@ -308,6 +308,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/whatsapp/exchange-token/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/whatsapp/exchange-token">> = Specific
+  const handler = {} as typeof import("../../src/app/api/whatsapp/exchange-token/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/whatsapp/session-callback/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/whatsapp/session-callback">> = Specific

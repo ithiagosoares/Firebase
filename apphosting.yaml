@@ -17,7 +17,11 @@ env:
     secret: WHATSAPP_ACCESS_TOKEN
   - variable: WHATSAPP_PHONE_NUMBER_ID
     secret: WHATSAPP_PHONE_NUMBER_ID
-
+  - variable: META_CLIENT_ID
+    secret: META_CLIENT_ID
+  - variable: META_CLIENT_SECRET
+    secret: META_CLIENT_SECRET
+    
   # Public variables for the frontend client
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBcS5kZ_JPyMEGx938EAsRpai2WrPtOWQA

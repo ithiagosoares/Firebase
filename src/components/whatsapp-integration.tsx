@@ -71,40 +71,65 @@ export function WhatsappIntegration() {
 
   }, []);
 
+// Dentro de whatsapp-integration.tsx
+
   const handleLogin = () => {
     if (!isSdkLoaded || !user) {
-      toast({ title: "Aguarde", description: "A integração com a Meta ainda está carregando. Tente novamente em alguns segundos." });
+      toast({ title: "Aguarde", description: "Carregando integração..." });
       return;
     }
 
     setIsLoading(true);
 
-    const loginTimeout = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-        toast({
-            variant: 'destructive',
-            title: 'A janela foi fechada',
-            description: 'O processo de conexão foi interrompido antes de ser concluído.'
-        });
-      }
-    }, 2000); // Se a janela for fechada, reseta o botão após 2 segundos.
-
-    window.FB.login(function(response: any) {
-      clearTimeout(loginTimeout); // Limpa o timeout se a API responder.
+    window.FB.login(async function(response: any) {
       if (response.authResponse) {
-        console.log('Embedded signup finalizado, aguardando redirecionamento...');
-        // A página irá recarregar, então não é necessário mudar o estado de loading aqui.
+        // O usuário autorizou e temos um CODE (graças ao config_id)
+        // O SDK do JS as vezes retorna o code dentro de authResponse ou precisamos capturá-lo de outra forma.
+        // No fluxo 'override_default_response_type: true' com 'response_type: code', o code vem no response.
+        
+        const code = response.code || response.authResponse.code; 
+        // Nota: As vezes a Meta muda onde o code vem. Se code for undefined, verifique response.authResponse.accessToken 
+        // Mas para System User, precisamos do CODE.
+
+        if (code) {
+            try {
+                // Chama nossa API para trocar o code pelo token permanente
+                const res = await fetch('/api/whatsapp/exchange-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, userId: user.uid })
+                });
+
+                if (res.ok) {
+                    toast({ title: "Sucesso!", description: "WhatsApp conectado com sucesso." });
+                    setIntegrationStatus('connected');
+                    // Opcional: window.location.reload();
+                } else {
+                    throw new Error("Falha na troca de token");
+                }
+            } catch (error) {
+                console.error(error);
+                toast({ variant: "destructive", title: "Erro", description: "Falha ao salvar conexão no servidor." });
+            }
+        } else {
+            console.error("Code não recebido da Meta", response);
+            toast({ variant: "destructive", title: "Erro", description: "Não recebemos o código de autorização da Meta." });
+        }
+
       } else {
         console.log('User cancelled login or did not fully authorize.');
-        toast({ variant: 'destructive', title: 'Conexão Cancelada', description: 'O processo de conexão não foi concluído.' });
-        setIsLoading(false);
       }
+      setIsLoading(false);
     }, {
-      config_id: '821688910682652',
+      config_id: '821688910682652', // Seu Config ID
       response_type: 'code',
       override_default_response_type: true,
-      state: user.uid,
+      extras: {
+        setup: {
+          // Isso garante que o usuário configure um número se não tiver
+          ...({})
+        }
+      }
     });
   };
   
