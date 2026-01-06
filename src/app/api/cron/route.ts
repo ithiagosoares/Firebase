@@ -53,7 +53,8 @@ export async function GET(request: Request) {
         const template = templateDoc.data() as Template;
         const populatedMessage = populateTemplate(template.body, patient);
 
-        await sendMessage(patient.phone, populatedMessage);
+        // Assumindo que o objeto 'message' tem o campo 'userId' salvo
+        await sendMessage(message.userId, patient.phone, populatedMessage);
 
         await messageRef.update({ status: 'Enviado' });
         console.log(`CRON: Mensagem ${message.id} enviada com sucesso para ${patient.name}.`);
