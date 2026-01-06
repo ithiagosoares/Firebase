@@ -1,4 +1,3 @@
-
 import { headers } from "next/headers";
 import type { NextRequest } from "next/server";
 import Stripe from "stripe";
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
     return new Response("Stripe não está configurado neste ambiente.", { status: 503 });
   }
 
-  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-02-24.acacia" });
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: "2025-02-24.acacia" }); // Ajuste a versão se necessário conforme seu package.json
   const signature = (await headers()).get("stripe-signature");
 
   let event: Stripe.Event;
@@ -44,6 +43,9 @@ export async function POST(req: NextRequest) {
   }
 
   switch (event.type) {
+    // ------------------------------------------------------------------
+    // 1. ASSINATURA CRIADA (Checkout Completo)
+    // ------------------------------------------------------------------
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const { client_reference_id: userId, customer: customerId } = session;
@@ -76,6 +78,7 @@ export async function POST(req: NextRequest) {
               remaining: credits,
             },
             monthlyUsage: 0,
+            cancelAtPeriodEnd: false, // Garante que comece como false
             updatedAt: new Date(),
           },
           { merge: true }
@@ -91,39 +94,120 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    // ------------------------------------------------------------------
+    // 2. RENOVAÇÃO DE PAGAMENTO (Zera contador e reseta créditos)
+    // ------------------------------------------------------------------
     case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
-        
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = invoice.customer as string;
+      
+      // Ignora faturas de criação de assinatura (billing_reason: 'subscription_create'), 
+      // pois o checkout.session.completed já lida com isso.
+      if (invoice.billing_reason === 'subscription_create') {
+        return new Response('Evento ignorado (subscription_create já tratado).', { status: 200 });
+      }
+
+      try {
+        const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1);
+        const userSnapshot = await usersQuery.get();
+
+        if (userSnapshot.empty) {
+          console.error(`❌ invoice.payment_succeeded: Nenhum usuário encontrado para o stripeCustomerId: ${customerId}`);
+          return new Response('Usuário não encontrado.', { status: 200 });
+        }
+
+        const userDoc = userSnapshot.docs[0];
+        const userData = userDoc.data();
+        const priceId = userData.stripePriceId as keyof typeof CREDITS_MAP | undefined;
+        const credits = priceId ? CREDITS_MAP[priceId] : 0;
+
+        await userDoc.ref.update({
+          monthlyUsage: 0, // Zera o contador na renovação
+          credits: {
+            remaining: credits, // Reseta os créditos na renovação
+          },
+          cancelAtPeriodEnd: false, // Se pagou, não está cancelado
+          updatedAt: new Date(),
+        });
+
+        console.log(`✅ Renovação processada para ${userDoc.id}. Créditos resetados para ${credits}.`);
+
+      } catch (error: any) {
+        console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error);
+        return new Response("Erro interno ao processar a renovação.", { status: 500 });
+      }
+
+      break;
+    }
+
+    // ------------------------------------------------------------------
+    // 3. ASSINATURA ATUALIZADA (Quando clica em Cancelar ou reativa)
+    // ------------------------------------------------------------------
+    case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
         try {
             const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1);
             const userSnapshot = await usersQuery.get();
 
             if (userSnapshot.empty) {
-                console.error(`❌ invoice.payment_succeeded: Nenhum usuário encontrado para o stripeCustomerId: ${customerId}`);
+                // Não é erro crítico, as vezes eventos chegam antes do user ser criado
+                return new Response('Usuário não encontrado para atualização.', { status: 200 });
+            }
+
+            const userDoc = userSnapshot.docs[0];
+
+            // Atualiza apenas o status de cancelamento agendado
+            await userDoc.ref.update({
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                updatedAt: new Date(),
+            });
+
+            console.log(`ℹ️ Status de cancelamento atualizado para o usuário ${userDoc.id}: ${subscription.cancel_at_period_end}`);
+
+        } catch (error: any) {
+            console.error(`🔥 Erro ao atualizar status da assinatura para ${customerId}:`, error);
+            return new Response("Erro interno.", { status: 500 });
+        }
+        break;
+    }
+
+    // ------------------------------------------------------------------
+    // 4. ASSINATURA DELETADA (Cancelamento finalizado -> Volta p/ Free)
+    // ------------------------------------------------------------------
+    case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        try {
+            const usersQuery = db().collection('users').where('stripeCustomerId', '==', customerId).limit(1);
+            const userSnapshot = await usersQuery.get();
+
+            if (userSnapshot.empty) {
+                console.error(`❌ customer.subscription.deleted: Usuário não encontrado para ${customerId}`);
                 return new Response('Usuário não encontrado.', { status: 200 });
             }
 
             const userDoc = userSnapshot.docs[0];
-            const userData = userDoc.data();
-            const priceId = userData.stripePriceId as keyof typeof CREDITS_MAP | undefined;
-            const credits = priceId ? CREDITS_MAP[priceId] : 0;
 
+            // Rebaixa o usuário para o plano Free
             await userDoc.ref.update({
-                monthlyUsage: 0, // Zera o contador na renovação
+                plan: "Free",
+                stripePriceId: null,
+                cancelAtPeriodEnd: false,
                 credits: {
-                  remaining: credits, // Reseta os créditos na renovação
+                    remaining: 5, // Créditos do plano Free (conforme seu código anterior)
                 },
                 updatedAt: new Date(),
             });
 
-            console.log(`✅ Renovação processada para ${userDoc.id}. Créditos resetados para ${credits}.`);
+            console.log(`🚫 Assinatura finalizada. Usuário ${userDoc.id} movido para o plano Free.`);
 
         } catch (error: any) {
-            console.error(`🔥 Erro ao processar renovação no Firestore para o cliente ${customerId}:`, error);
-            return new Response("Erro interno ao processar a renovação.", { status: 500 });
+            console.error(`🔥 Erro ao finalizar assinatura para ${customerId}:`, error);
+            return new Response("Erro interno.", { status: 500 });
         }
-
         break;
     }
 
