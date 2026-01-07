@@ -21,15 +21,17 @@ export async function POST(req: NextRequest) {
     console.log(`Iniciando troca de token para o usuário ${userId}...`);
 
     // 2. Troca o 'code' pelo 'access_token' de curta duração
-    // CORREÇÃO: Removi o parâmetro '&redirect_uri=...' pois ele causa erro 191 em fluxos de popup
-    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}`;
+    // IMPORTANTE: Esta URL deve ser EXATAMENTE igual à que está na sua lista de 'URIs de redirecionamento do OAuth válidos'
+    // Conforme sua imagem 'image_c297c2.png', é esta aqui:
+    const redirectUri = "https://vitallink.clinic/api/whatsapp/embedded-signup/callback";
+    
+    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}&redirect_uri=${redirectUri}`;
 
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
     if (tokenData.error) {
       console.error("Erro da Meta (Token Curto):", JSON.stringify(tokenData.error));
-      // Vamos retornar o erro exato para facilitar o debug no frontend se acontecer de novo
       return NextResponse.json({ error: "Falha ao obter access_token", details: tokenData.error }, { status: 500 });
     }
 
@@ -45,8 +47,6 @@ export async function POST(req: NextRequest) {
     const finalToken = longTokenData.access_token || shortLivedToken; 
 
     // 4. Salvar no Firestore
-    
-    // Tenta pegar o ID do Facebook do usuário para salvar junto
     let facebookUserId = "";
     try {
         const meRes = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${finalToken}`);
