@@ -9,58 +9,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Code e UserId são obrigatórios" }, { status: 400 });
     }
 
-    // 1. Definição das Credenciais (Usando os nomes corretos do apphosting.yaml)
-    const clientId = process.env.META_CLIENT_ID || "821688910682652"; // Seu App ID
-    const clientSecret = process.env.META_CLIENT_SECRET; // <--- AQUI ESTAVA O ERRO PROVAVELMENTE
+    // 1. Definição das Credenciais
+    const clientId = process.env.META_CLIENT_ID || "821688910682652"; 
+    const clientSecret = process.env.META_CLIENT_SECRET; 
 
     if (!clientSecret) {
-      console.error("ERRO CRÍTICO: META_CLIENT_SECRET não está definido nas variáveis de ambiente.");
+      console.error("ERRO CRÍTICO: META_CLIENT_SECRET não está definido.");
       return NextResponse.json({ error: "Configuração de servidor inválida" }, { status: 500 });
     }
 
     console.log(`Iniciando troca de token para o usuário ${userId}...`);
 
-    // 2. Troca o 'code' pelo 'access_token' de usuário
-    // Nota: Para códigos vindos do FB.login(), o redirect_uri geralmente deve ser a URL exata ou vazia dependendo do fluxo.
-    // Vamos tentar passar a URL base do site ou deixar sem se falhar.
-    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}&redirect_uri=https://vitallink.clinic/`;
+    // 2. Troca o 'code' pelo 'access_token' de curta duração
+    // CORREÇÃO: Removi o parâmetro '&redirect_uri=...' pois ele causa erro 191 em fluxos de popup
+    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}`;
 
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
     if (tokenData.error) {
-      console.error("Erro da Meta ao trocar token:", JSON.stringify(tokenData.error));
-      return NextResponse.json({ error: "Falha ao obter access_token da Meta", details: tokenData.error }, { status: 500 });
+      console.error("Erro da Meta (Token Curto):", JSON.stringify(tokenData.error));
+      // Vamos retornar o erro exato para facilitar o debug no frontend se acontecer de novo
+      return NextResponse.json({ error: "Falha ao obter access_token", details: tokenData.error }, { status: 500 });
     }
 
     const shortLivedToken = tokenData.access_token;
-    console.log("Access Token de curta duração obtido com sucesso.");
+    console.log("Token curto obtido. Trocando por longa duração...");
 
-    // 3. Troca o token de curta duração por um de LONGA duração (60 dias)
+    // 3. Troca por Token de LONGA Duração (60 dias)
     const longLivedUrl = `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
     
     const longTokenRes = await fetch(longLivedUrl);
     const longTokenData = await longTokenRes.json();
     
-    const finalToken = longTokenData.access_token || shortLivedToken; // Usa o longo se der certo, senão usa o curto
+    const finalToken = longTokenData.access_token || shortLivedToken; 
 
-    // 4. Busca o número de telefone e o ID da conta do WhatsApp Business (WABA)
-    // Precisamos saber quais ativos esse usuário tem acesso
-    const meUrl = `https://graph.facebook.com/v20.0/me?fields=id,name,email&access_token=${finalToken}`;
-    const meRes = await fetch(meUrl);
-    const meData = await meRes.json();
-
-    // Busca as contas do WhatsApp Business vinculadas
-    const wabaUrl = `https://graph.facebook.com/v20.0/${meData.id}/businesses?fields=id,name,owned_whatsapp_business_accounts{id,name,phone_numbers{id,display_phone_number}}&access_token=${finalToken}`;
-    // Nota: Essa query acima é complexa, às vezes é melhor buscar granularmente. 
-    // Vamos tentar uma abordagem mais direta para pegar o telefone se possível, ou salvar apenas o token e deixar o usuário configurar depois.
-    // Para simplificar e garantir o sucesso do erro 500 agora, vamos focar em salvar o token.
+    // 4. Salvar no Firestore
     
-    // Vamos salvar o token no Firestore
+    // Tenta pegar o ID do Facebook do usuário para salvar junto
+    let facebookUserId = "";
+    try {
+        const meRes = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${finalToken}`);
+        const meData = await meRes.json();
+        facebookUserId = meData.id;
+    } catch (e) {
+        console.warn("Não foi possível pegar o ID do usuário Meta, seguindo apenas com token.");
+    }
+
     await db().collection("users").doc(userId).update({
       whatsappSession: {
         accessToken: finalToken,
-        facebookUserId: meData.id,
+        facebookUserId: facebookUserId,
         connectedAt: new Date().toISOString(),
         status: 'connected'
       }
@@ -68,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      phoneNumber: "Pendente de seleção", // Podemos melhorar isso num segundo passo
+      phoneNumber: "Conectado", 
       message: "Token salvo com sucesso" 
     });
 
