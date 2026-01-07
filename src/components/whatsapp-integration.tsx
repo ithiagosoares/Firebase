@@ -73,27 +73,28 @@ export function WhatsappIntegration() {
     }
   }, []);
 
-  // Função separada para processar o resultado (Aqui pode ser Async)
+  // Função separada para processar o resultado
   const processFacebookResponse = async (response: any) => {
     if (!user) return;
 
     if (response.authResponse) {
-        const code = response.code || response.authResponse.code; 
+        // MUDANÇA AQUI: Pegamos o accessToken direto, em vez do code
+        const accessToken = response.authResponse.accessToken; 
         
-        if (code) {
+        if (accessToken) {
             try {
-                // Troca o código pelo token na nossa API
+                // Envia o token para o backend apenas para salvar/estender
                 const res = await fetch('/api/whatsapp/exchange-token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, userId: user.uid })
+                    body: JSON.stringify({ accessToken, userId: user.uid })
                 });
 
                 if (res.ok) {
                     const data = await res.json();
                     toast({ 
                         title: "Conectado!", 
-                        description: `WhatsApp vinculado: ${data.phoneNumber || 'Sucesso'}` 
+                        description: `WhatsApp vinculado com sucesso!` 
                     });
                     setIntegrationStatus('connected');
                 } else {
@@ -106,14 +107,13 @@ export function WhatsappIntegration() {
                 toast({ variant: "destructive", title: "Erro", description: "Falha na conexão com o servidor." });
             }
         } else {
-             console.error("Code não recebido:", response);
-             toast({ variant: "destructive", title: "Erro", description: "A Meta não retornou o código de autorização." });
+             console.error("Token não recebido:", response);
+             toast({ variant: "destructive", title: "Erro", description: "A Meta não retornou o token de acesso." });
         }
     } else {
         console.log('Login cancelado.');
     }
     
-    // Sempre desativa o loading no final
     setIsLoading(false);
   };
 
@@ -125,21 +125,19 @@ export function WhatsappIntegration() {
 
     setIsLoading(true);
 
-    // Timeout de segurança
     const loginTimeout = setTimeout(() => {
       if (isLoading) {
         setIsLoading(false);
       }
     }, 120000); 
 
-    // O PULO DO GATO: Esta função NÃO pode ser async
     window.FB.login(function(response: any) {
       clearTimeout(loginTimeout);
-      // Chamamos a função async separadamente
       processFacebookResponse(response);
     }, {
+      // Configuração corrigida sem email
       scope: 'public_profile,whatsapp_business_management,whatsapp_business_messaging',
-      response_type: 'code', 
+      response_type: 'token', // Mudamos para pedir o token explicitamente (embora o SDK ja mande)
       override_default_response_type: true,
       extras: {
         setup: {}

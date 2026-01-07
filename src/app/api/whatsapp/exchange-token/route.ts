@@ -3,13 +3,13 @@ import { db } from "@/lib/firebase-admin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { code, userId } = await req.json();
+    // Recebemos agora o 'accessToken' direto, e não mais o 'code'
+    const { accessToken, userId } = await req.json();
 
-    if (!code || !userId) {
-      return NextResponse.json({ error: "Code e UserId são obrigatórios" }, { status: 400 });
+    if (!accessToken || !userId) {
+      return NextResponse.json({ error: "AccessToken e UserId são obrigatórios" }, { status: 400 });
     }
 
-    // 1. Definição das Credenciais
     const clientId = process.env.META_CLIENT_ID || "821688910682652"; 
     const clientSecret = process.env.META_CLIENT_SECRET; 
 
@@ -18,42 +18,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Configuração de servidor inválida" }, { status: 500 });
     }
 
-    console.log(`Iniciando troca de token para o usuário ${userId}...`);
+    console.log(`Recebido token curto do usuário ${userId}. Iniciando extensão para longa duração...`);
 
-    // 2. Troca o 'code' pelo 'access_token' de curta duração
-    // IMPORTANTE: Esta URL deve ser EXATAMENTE igual à que está na sua lista de 'URIs de redirecionamento do OAuth válidos'
-    // Conforme sua imagem 'image_c297c2.png', é esta aqui:
-    const redirectUri = "https://vitallink.clinic/api/whatsapp/embedded-signup/callback";
-    
-    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}&redirect_uri=${redirectUri}`;
-
-    const tokenRes = await fetch(tokenUrl);
-    const tokenData = await tokenRes.json();
-
-    if (tokenData.error) {
-      console.error("Erro da Meta (Token Curto):", JSON.stringify(tokenData.error));
-      return NextResponse.json({ error: "Falha ao obter access_token", details: tokenData.error }, { status: 500 });
-    }
-
-    const shortLivedToken = tokenData.access_token;
-    console.log("Token curto obtido. Trocando por longa duração...");
-
-    // 3. Troca por Token de LONGA Duração (60 dias)
-    const longLivedUrl = `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortLivedToken}`;
+    // ETAPA ÚNICA: Troca o token curto (1 hora) por um de LONGA duração (60 dias)
+    // Esse endpoint NÃO exige redirect_uri, eliminando o erro de validação.
+    const longLivedUrl = `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${accessToken}`;
     
     const longTokenRes = await fetch(longLivedUrl);
     const longTokenData = await longTokenRes.json();
     
-    const finalToken = longTokenData.access_token || shortLivedToken; 
+    if (longTokenData.error) {
+        console.error("Erro ao estender token:", longTokenData.error);
+        return NextResponse.json({ error: "Falha ao estender token", details: longTokenData.error }, { status: 500 });
+    }
 
-    // 4. Salvar no Firestore
+    const finalToken = longTokenData.access_token || accessToken; 
+    console.log("Token de longa duração obtido com sucesso.");
+
+    // Tenta pegar o ID do Facebook do usuário para salvar junto (Opcional, mas útil)
     let facebookUserId = "";
     try {
         const meRes = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${finalToken}`);
         const meData = await meRes.json();
         facebookUserId = meData.id;
     } catch (e) {
-        console.warn("Não foi possível pegar o ID do usuário Meta, seguindo apenas com token.");
+        console.warn("Não foi possível pegar o ID do usuário Meta.");
     }
 
     await db().collection("users").doc(userId).update({
@@ -67,8 +56,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      phoneNumber: "Conectado", 
-      message: "Token salvo com sucesso" 
+      message: "Integração concluída com sucesso" 
     });
 
   } catch (error: any) {
