@@ -1,6 +1,8 @@
 
 import { Timestamp } from "firebase/firestore";
 
+// src/lib/types.ts
+
 export type WithId<T> = T & { id: string };
 
 export type User = {
@@ -84,6 +86,9 @@ export type Template = {
     url: string;
   } | null;
   isDefault?: boolean;
+  
+  // 👇 ADICIONE APENAS ESTA LINHA DENTRO DO BLOCO QUE JÁ EXISTE:
+  category?: 'UTILITY' | 'MARKETING' | string; 
 };
 
 // Definindo os dois tipos de agendamento possíveis

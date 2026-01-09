@@ -187,19 +187,23 @@ export default function WorkflowsPage() {
   }
   
   const renderEmptyState = () => (
-    <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-8">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <WorkflowIcon className="h-12 w-12 text-muted-foreground" />
-        <h3 className="text-2xl font-bold tracking-tight">
-          Nenhum fluxo de automação criado
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Comece a automatizar sua comunicação criando seu primeiro fluxo.
-        </p>
-        <Button className="mt-4" asChild>
+    <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-8 min-h-[400px] bg-muted/5">
+      <div className="flex flex-col items-center gap-6 text-center p-12 max-w-md"> {/* Aumentei gap e padding */}
+        <div className="bg-primary/10 p-4 rounded-full">
+           {/* Se estiver usando Lucide Icons, importe Workflow ou GitFork */}
+           <WorkflowIcon className="h-10 w-10 text-primary" /> 
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold tracking-tight">Nenhum fluxo criado</h3>
+          <p className="text-sm text-muted-foreground">
+            Automatize sua comunicação criando sequências de mensagens inteligentes.
+          </p>
+        </div>
+  
+        <Button className="mt-4 w-full sm:w-auto" asChild>
           <Link href="/workflows/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Criar Fluxo
+              <PlusCircle className="mr-2 h-4 w-4" /> Criar Primeiro Fluxo
           </Link>
         </Button>
       </div>

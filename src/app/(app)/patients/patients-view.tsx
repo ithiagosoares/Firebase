@@ -1,17 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { MoreHorizontal, PlusCircle, Upload, Loader2 } from "lucide-react"
-import { collection, doc } from "firebase/firestore"
+import Link from "next/link"
+import { Plus, Loader2, User, Phone, Calendar } from "lucide-react" // Ícones
+import { format } from "date-fns" // Para formatar data (opcional)
 
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -21,138 +21,117 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { PatientForm } from "@/components/patient-form"
-import { type Patient } from "@/lib/types"
-import { ClientSideDateTime } from "@/components/client-side-date-time"
-import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
+
+// --- O SEU NOVO COMPONENTE AQUI ---
+import { CsvImporter } from "@/components/csv-importer"
+
+// Hooks do Firebase
+import { useFirebase, useMemoFirebase } from "@/firebase/provider"
+import { collection, query, orderBy } from "firebase/firestore"
 import { useCollection } from "@/firebase/firestore/use-collection"
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+
+// Tipo do Paciente
+type Patient = {
+    id: string;
+    name: string;
+    phone: string;
+    status?: string;
+    createdAt?: any;
+}
 
 export default function PatientsView() {
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
-  const { user, isUserLoading } = useUser()
-  const firestore = useFirestore()
+  const { firestore, user } = useFirebase()
 
+  // Conexão com o banco de dados
   const patientsCollection = useMemoFirebase(() => {
-    if (!user) return null
-    return collection(firestore, `users/${user.uid}/patients`)
-  }, [firestore, user])
-  
+    if (!firestore || !user) return null
+    // Ordena por data de criação (mais novos primeiro)
+    return query(collection(firestore, `users/${user.uid}/patients`), orderBy('createdAt', 'desc'))
+  }, [firestore, user]);
+
   const { data: patients, isLoading } = useCollection<Patient>(patientsCollection);
 
-  const handleAddPatient = () => {
-    setSelectedPatient(null)
-    setIsFormOpen(true)
-  }
-
-  const handleEditPatient = (patient: Patient) => {
-    setSelectedPatient(patient)
-    setIsFormOpen(true)
-  }
-  
-  const handleDeletePatient = (patientId: string) => {
-    if (!user) return;
-    const patientDocRef = doc(firestore, `users/${user.uid}/patients/${patientId}`);
-    deleteDocumentNonBlocking(patientDocRef);
-  }
-
-  const handleFormClose = () => {
-    setIsFormOpen(false)
-    setSelectedPatient(null)
-  }
-
-  if (isLoading || isUserLoading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   }
 
   return (
-    <>
-      <div className="flex justify-end gap-4 mb-4">
-        <Button variant="outline">
-          <Upload className="mr-2 h-4 w-4" />
-          Importar via CSV
-        </Button>
-        <Button onClick={handleAddPatient}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Adicionar Paciente
-        </Button>
-      </div>
-      
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Paciente</TableHead>
-              <TableHead className="hidden md:table-cell">Última Consulta</TableHead>
-              <TableHead className="hidden md:table-cell">Próxima Consulta</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Ações</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {patients && patients.map((patient) => (
-              <TableRow key={patient.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="hidden h-9 w-9 sm:flex">
-                       <AvatarImage src={patient.avatarUrl} alt={patient.name} />
-                       <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="font-medium">{patient.name}</div>
-                    <div className="hidden text-sm text-muted-foreground md:inline">{patient.email}</div>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {patient.lastAppointment ? (
-                    <ClientSideDateTime date={patient.lastAppointment} />
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {patient.nextAppointment ? (
-                    <ClientSideDateTime date={patient.nextAppointment} showTime={true} />
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={patient.status === 'Ativo' ? 'default' : 'secondary'}>{patient.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleEditPatient(patient)}>Editar</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDeletePatient(patient.id)}>Excluir</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Pacientes</h1>
+            <p className="text-muted-foreground">Gerencie sua base de contatos.</p>
+        </div>
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+             {/* AQUI ESTÁ A SUBSTITUIÇÃO DO BOTÃO ANTIGO */}
+             <CsvImporter />
+             
+             <Button asChild className="flex-1 sm:flex-none">
+                <Link href="/patients/new">
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Paciente
+                </Link>
+             </Button>
+        </div>
       </div>
 
-      <PatientForm 
-        open={isFormOpen} 
-        onOpenChange={handleFormClose}
-        patient={selectedPatient}
-      />
-    </>
+      <Card>
+        <CardHeader>
+            <CardTitle>Lista de Pacientes</CardTitle>
+            <CardDescription>
+                Você tem o total de <strong>{patients?.length || 0}</strong> pacientes cadastrados.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {!patients || patients.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    Nenhum paciente encontrado. Importe via CSV ou adicione manualmente.
+                </div>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Paciente</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Cadastro</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {patients.map((patient) => (
+                            <TableRow key={patient.id}>
+                                <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <User className="h-4 w-4" />
+                                        </div>
+                                        {patient.name}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Phone className="h-3 w-3" />
+                                        {patient.phone}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
+                                        {patient.status || 'Ativo'}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right text-muted-foreground text-sm">
+                                    {patient.createdAt?.seconds 
+                                        ? new Date(patient.createdAt.seconds * 1000).toLocaleDateString('pt-BR')
+                                        : '-'
+                                    }
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
