@@ -35,16 +35,29 @@ export type Clinic = {
     monthlyUsage?: number; // O número de conversas usadas no ciclo de faturamento atual
 }
 
+
 export type Patient = {
-  id: string;
+  id?: string; // Opcional pois na criação ainda não existe
   name: string;
-  email: string;
   phone: string;
-  lastAppointment?: Timestamp;
-  nextAppointment?: Timestamp;
-  status: "Ativo" | "Inativo";
+  
+  // Tornamos opcional (?) para aceitar cadastros rápidos via CSV/LGPD
+  email?: string; 
+  
+  lastAppointment?: Timestamp | Date | any; // Aceita Date ou Timestamp para evitar conflitos
+  nextAppointment?: Timestamp | Date | any;
+  
+  // Adicionamos os novos status do importador
+  status: "Ativo" | "Inativo" | "Erro" | "Incompleto" | string;
+  
   avatarUrl?: string;
+
+  // --- NOVOS CAMPOS ---
+  dataStatus?: string; // Qualidade do dado vindo do CSV
+  createdAt?: any;     // Data de criação (para ordenar a tabela)
+  lgpdConsent?: boolean; // Controle de LGPD
 };
+
 
 export type Appointment = {
   id: string;

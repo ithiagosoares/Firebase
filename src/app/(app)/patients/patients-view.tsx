@@ -1,9 +1,8 @@
 "use client"
 
+import { useState } from "react" // Adicionado useState
 import Link from "next/link"
-import { Plus, Loader2, User, Phone, Calendar } from "lucide-react" // Ícones
-import { format } from "date-fns" // Para formatar data (opcional)
-
+import { Plus, Loader2, User, Phone } from "lucide-react" 
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -21,31 +20,27 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
-// --- O SEU NOVO COMPONENTE AQUI ---
+// Componentes do seu projeto
 import { CsvImporter } from "@/components/csv-importer"
+import { PatientForm } from "@/components/patient-form" // <--- Importamos o SEU formulário existente
 
 // Hooks do Firebase
 import { useFirebase, useMemoFirebase } from "@/firebase/provider"
 import { collection, query, orderBy } from "firebase/firestore"
 import { useCollection } from "@/firebase/firestore/use-collection"
-
-// Tipo do Paciente
-type Patient = {
-    id: string;
-    name: string;
-    phone: string;
-    status?: string;
-    createdAt?: any;
-}
+import { type Patient } from "@/lib/types" // Importando a tipagem correta
 
 export default function PatientsView() {
   const { firestore, user } = useFirebase()
 
+  // Estado para controlar o modal de Novo Paciente
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
   // Conexão com o banco de dados
   const patientsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null
-    // Ordena por data de criação (mais novos primeiro)
     return query(collection(firestore, `users/${user.uid}/patients`), orderBy('createdAt', 'desc'))
   }, [firestore, user]);
 
@@ -64,13 +59,11 @@ export default function PatientsView() {
         </div>
         
         <div className="flex gap-2 w-full sm:w-auto">
-             {/* AQUI ESTÁ A SUBSTITUIÇÃO DO BOTÃO ANTIGO */}
              <CsvImporter />
              
-             <Button asChild className="flex-1 sm:flex-none">
-                <Link href="/patients/new">
-                    <Plus className="mr-2 h-4 w-4" /> Adicionar Paciente
-                </Link>
+             {/* Botão que abre o modal existente */}
+             <Button onClick={() => setIsDialogOpen(true)} className="flex-1 sm:flex-none">
+                <Plus className="mr-2 h-4 w-4" /> Adicionar Paciente
              </Button>
         </div>
       </div>
@@ -93,7 +86,7 @@ export default function PatientsView() {
                         <TableRow>
                             <TableHead>Paciente</TableHead>
                             <TableHead>Telefone</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Qualidade do Dado</TableHead>
                             <TableHead className="text-right">Cadastro</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -111,11 +104,19 @@ export default function PatientsView() {
                                 <TableCell>
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                         <Phone className="h-3 w-3" />
-                                        {patient.phone}
+                                        {patient.phone || "-"}
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">
+                                    <Badge 
+                                        variant="outline" 
+                                        className={cn(
+                                            "border-0",
+                                            patient.status === 'Erro' && "bg-red-100 text-red-700 hover:bg-red-100",
+                                            patient.status === 'Incompleto' && "bg-amber-100 text-amber-700 hover:bg-amber-100",
+                                            (!patient.status || patient.status === 'Ativo') && "bg-green-100 text-green-700 hover:bg-green-100"
+                                        )}
+                                    >
                                         {patient.status || 'Ativo'}
                                     </Badge>
                                 </TableCell>
@@ -132,6 +133,14 @@ export default function PatientsView() {
             )}
         </CardContent>
       </Card>
+
+      {/* AQUI ESTÁ A INTEGRAÇÃO COM O SEU FORMULÁRIO EXISTENTE */}
+      <PatientForm 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        patient={null} // Passamos null para indicar que é um NOVO paciente
+      />
+      
     </div>
   )
 }
