@@ -11,80 +11,133 @@ export interface WhatsAppTemplate {
   export const defaultTemplates: WhatsAppTemplate[] = [
     // --- GRUPO 1: GESTÃO DE AGENDA ---
     {
-      name: 'lembrete_confirmacao_24h',
+      name: 'lembrete_consulta_24h',
       category: 'UTILITY',
-      body: 'Olá, {{1}}. Tudo bem? Passando para lembrar da sua consulta amanhã, dia *{{2}}* às *{{3}}*. Podemos confirmar sua presença?',
+      body: 'Olá, {{1}}! Passando para lembrar da sua consulta na {{2}}, agendada para amanhã, {{3}} às {{4}}. Podemos confirmar sua presença?',
       variables: {
         '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Data da Consulta',
+        '{{2}}': 'Nome da Clínica',
+        '{{3}}': 'Data da Consulta',
+        '{{4}}': 'Horário da Consulta'
+      }
+    },
+    {
+      name: 'lembrete_imediato_1h',
+      category: 'UTILITY',
+      body: 'Oi, {{1}}! Tudo pronto para te receber aqui na {{2}} às {{3}}. Estamos te aguardando! Até logo. ⏰',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica',
         '{{3}}': 'Horário da Consulta'
       }
     },
     {
-      name: 'aviso_aguardando_1h',
+      name: 'lembrete_padrao_24h',
       category: 'UTILITY',
-      body: 'Oi, {{1}}. Tudo pronto para te receber aqui na clínica! Seu horário é daqui a pouco, às *{{2}}*. Estamos te esperando!',
+      body: 'Olá, {{1}}! Passando para lembrar da sua consulta na {{2}} amanhã, dia {{3}}, às {{4}}. Te aguardamos lá!',
       variables: {
         '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Horário da Consulta'
+        '{{2}}': 'Nome da Clínica',
+        '{{3}}': 'Data da Consulta',
+        '{{4}}': 'Horário da Consulta'
       }
     },
     {
-      name: 'reagendamento_clinica',
+      name: 'convite_retorno_preventivo',
       category: 'UTILITY',
-      body: 'Olá, {{1}}. Devido a um imprevisto na clínica, precisaremos reagendar sua consulta de *{{2}}*. Pedimos desculpas! Qual o melhor horário para remarcarmos?',
+      body: 'Olá, {{1}}! Já faz um tempo desde sua última visita à {{2}}. Vamos agendar seu check-up preventivo para manter sua saúde em dia? Responda para ver os horários disponíveis. ✨',
       variables: {
         '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Data Original'
-      }
-    },
-    {
-      name: 'aviso_no_show',
-      category: 'UTILITY',
-      body: 'Oi, {{1}}. Sentimos sua falta hoje na consulta das *{{2}}*. Aconteceu algum imprevisto? Vamos reagendar para garantir seu tratamento?',
-      variables: {
-        '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Horário Agendado'
+        '{{2}}': 'Nome da Clínica'
       }
     },
   
     // --- GRUPO 2: RECORRÊNCIA E RETORNO ---
     {
-      name: 'retorno_preventivo_6m',
+      name: 'continuidade_tratamento',
       category: 'MARKETING',
-      body: 'Olá, {{1}}. Já faz 6 meses desde sua última limpeza/check-up. A prevenção é o melhor caminho para um sorriso saudável! Vamos agendar seu retorno?',
+      body: 'Oi, {{1}}. Para o sucesso do seu tratamento na {{2}}, precisamos realizar a próxima etapa. Vamos deixar agendado? Aguardo seu retorno!',
       variables: {
-        '{{1}}': 'Nome do Paciente'
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
       }
     },
     {
-      name: 'continuidade_tratamento',
+      name: 'convite_retorno_preventivo_6_meses',
       category: 'MARKETING',
-      body: 'Olá, {{1}}. Para o sucesso do seu tratamento, é importante realizarmos a próxima etapa. Temos horários livres esta semana. Podemos agendar?',
+      body: 'Olá, {{1}}! O tempo voa: já faz 6 meses da sua última visita à {{2}}. Vamos agendar sua limpeza preventiva para manter a saúde em dia? Responda para ver horários. ✨',
       variables: {
-        '{{1}}': 'Nome do Paciente'
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
       }
     },
   
     // --- GRUPO 3: PÓS-ATENDIMENTO ---
     {
-      name: 'pos_operatorio_cuidados',
+      name: 'continuidade_tratamento',
+      category: 'MARKETING',
+      body: 'Oi, {{1}}. Para o sucesso do seu tratamento na {{2}}, precisamos realizar a próxima etapa. Vamos deixar agendado? Aguardo seu retorno!',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
+      }
+    },
+    // Manter
+    {
+      name: 'convite_retorno_preventivo_6_meses',
+      category: 'MARKETING',
+      body: 'Olá, {{1}}! O tempo voa: já faz 6 meses da sua última visita à {{2}}. Vamos agendar sua limpeza preventiva para manter a saúde em dia? Responda para ver horários. ✨',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
+      }
+    },
+    // Manter
+    {
+      name: 'continuidade_tratamento',
+      category: 'MARKETING',
+      body: 'Oi, {{1}}. Para o sucesso do seu tratamento na {{2}}, precisamos realizar a próxima etapa. Vamos deixar agendado? Aguardo seu retorno!',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
+      }
+    },
+
+    {
+      name: 'pesquisa_satisfacao_nps',
+      category: 'MARKETING',
+      body: 'Olá, {{1}}. Gostaríamos muito de ouvir você! Em uma escala de 0 a 10, o quanto você recomendaria a {{2}} a um amigo? Sua opinião nos ajuda a melhorar. 💬',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
+      }
+    },
+    {
+      name: 'cuidados_pos_procedimento',
       category: 'UTILITY',
-      body: 'Oi, {{1}}. Como você está se sentindo após o procedimento? Lembre-se de seguir as orientações e descansar. Qualquer desconforto, nos avise!',
+      body: 'Oi, {{1}}. Esperamos que esteja bem após o procedimento na {{2}}. Lembre-se de seguir as orientações e descansar. Qualquer desconforto ou dúvida, nos chame aqui! 🩺',
+      variables: {
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
+      }
+    },
+    {
+      name: 'instrucao_pos_procedimento',
+      category: 'UTILITY',
+      body: 'Olá, {{1}}. Como está a recuperação? Lembre-se das orientações que te passamos: repouso e medicação nos horários certos. Qualquer desconforto, nos chame aqui! 💙',
       variables: {
         '{{1}}': 'Nome do Paciente'
       }
     },
     {
-      name: 'pesquisa_satisfacao_nps',
+      name: 'pesquisa_nps_simples',
       category: 'MARKETING',
-      body: 'Oi, {{1}}. Gostaríamos muito de ouvir você! Em uma escala de 0 a 10, o quanto você recomendaria nossa clínica para um amigo? Sua opinião é vital para nós.',
+      body: 'Oi, {{1}}! Queremos ser cada vez melhores. De 0 a 10, o quanto você recomendaria a {{2}} para um amigo? Sua opinião é muito importante pra nós! 💬',
       variables: {
-        '{{1}}': 'Nome do Paciente'
+        '{{1}}': 'Nome do Paciente',
+        '{{2}}': 'Nome da Clínica'
       }
     },
-  
-    // --- GRUPO 4: COMERCIAL ---
     {
       name: 'resgate_orcamento_pendente',
       category: 'MARKETING',
@@ -92,24 +145,6 @@ export interface WhatsAppTemplate {
       variables: {
         '{{1}}': 'Nome do Paciente',
         '{{2}}': 'Nome da Clínica'
-      }
-    },
-    {
-      name: 'retomada_orcamento',
-      category: 'MARKETING',
-      body: 'Olá, {{1}}. Ainda pensando no seu novo sorriso? Ficou alguma dúvida sobre o orçamento da {{2}} ou formas de pagamento? Estou à disposição para ajudar você a decidir. Vamos conversar?',
-      variables: {
-        '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Nome da Clínica'
-      }
-    },
-    {
-      name: 'campanha_sazonal_oferta',
-      category: 'MARKETING',
-      body: 'Novidade, {{1}}! 📢 Chegou a campanha {{2}} na nossa clínica. Preparamos uma condição especial para você realizar esse tratamento agora. Quer saber mais detalhes?',
-      variables: {
-        '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Nome da Campanha'
       }
     }
   ];
