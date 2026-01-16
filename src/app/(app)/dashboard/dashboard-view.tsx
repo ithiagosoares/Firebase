@@ -14,56 +14,77 @@ import { MessageSquare, Users, AlertCircle, Calendar, PlusCircle, FileText, Load
 import Link from "next/link"
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
-import { collection } from "firebase/firestore"
+import { collection, query, orderBy } from "firebase/firestore"
 import { type Patient, type ScheduledMessage } from "@/lib/types"
 
 export default function DashboardView() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
 
+  // Buscamos TODOS os pacientes
+  // Nota: Não usamos orderBy('createdAt') aqui para garantir que pacientes importados
+  // sem data (CSV antigo) ainda sejam contados no card de "Total".
   const patientsCollection = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, `users/${user.uid}/patients`);
   }, [firestore, user]);
+  
   const { data: patients, isLoading: isLoadingPatients } = useCollection<Patient>(patientsCollection);
   
+  // Query de mensagens
   const messagesCollection = useMemoFirebase(() => {
     if (!user) return null;
-    return collection(firestore, `users/${user.uid}/scheduledMessages`);
+    return query(collection(firestore, `users/${user.uid}/scheduledMessages`), orderBy('scheduledAt', 'desc'));
   }, [firestore, user]);
+  
   const { data: messages, isLoading: isLoadingMessages } = useCollection<ScheduledMessage>(messagesCollection);
 
   const stats = useMemo(() => {
     const sentMessages = messages?.filter(m => m.status === 'Enviado').length || 0;
     const failedMessages = messages?.filter(m => m.status === 'Falhou').length || 0;
+    const pendingMessages = messages?.filter(m => m.status === 'Agendado').length || 0;
 
     return [
       {
         title: "Total de Pacientes",
         value: patients?.length ?? 0,
         icon: Users,
-        change: "Pacientes cadastrados",
+        change: "Base total de contatos",
       },
       {
         title: "Mensagens Enviadas",
         value: sentMessages,
         icon: MessageSquare,
-        change: "No último mês",
+        change: "Total acumulado",
       },
       {
-        title: "Consultas Marcadas",
-        value: "N/A",
+        title: "Agendadas",
+        value: pendingMessages,
         icon: Calendar,
-        change: "Em breve",
+        change: "Próximos envios",
       },
       {
         title: "Falhas de Envio",
         value: failedMessages,
         icon: AlertCircle,
-        change: "No último mês",
+        change: "Total acumulado",
       },
     ]
   }, [patients, messages]);
+
+  // Filtra pacientes para garantir que o GRÁFICO não quebre se faltar data
+  // Pacientes importados via CSV precisam ter o campo createdAt para aparecerem na linha do tempo
+  const chartPatients = useMemo(() => {
+    if (!patients) return [];
+    return patients
+        .filter(p => p.createdAt) // Só manda pro gráfico quem tem data
+        .sort((a, b) => {
+             // Ordenação segura em memória
+             const dateA = a.createdAt?.seconds || 0;
+             const dateB = b.createdAt?.seconds || 0;
+             return dateA - dateB;
+        });
+  }, [patients]);
 
 
   const quickLinks = [
@@ -78,7 +99,7 @@ export default function DashboardView() {
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
         {quickLinks.map((link) => (
-          <Card key={link.title} className="flex flex-col">
+          <Card key={link.title} className="flex flex-col hover:border-primary/50 transition-colors">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <link.icon className="h-5 w-5 text-primary" />
@@ -87,7 +108,7 @@ export default function DashboardView() {
               <CardDescription>{link.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow flex items-end">
-              <Button asChild className="w-full">
+              <Button asChild className="w-full" variant="outline">
                 <Link href={link.href}>Acessar</Link>
               </Button>
             </CardContent>
@@ -128,10 +149,10 @@ export default function DashboardView() {
         </div>
       )}
 
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 mt-8">
+        {/* Passamos chartPatients (filtrados) para evitar erros no gráfico */}
         <SentMessagesChart messages={messages || []} isLoading={isLoading} />
-        <NewPatientsChart patients={patients || []} isLoading={isLoading} />
+        <NewPatientsChart patients={chartPatients} isLoading={isLoading} />
       </div>
     </>
   )

@@ -5,7 +5,7 @@ import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tool
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Users, MessageSquare } from "lucide-react"
 import { type ScheduledMessage, type Patient } from "@/lib/types"
-import { subMonths, format, startOfMonth } from "date-fns"
+import { subMonths, format } from "date-fns"
 
 const ChartEmptyState = ({ message, icon: Icon }: { message: string, icon: React.ElementType }) => (
   <div className="flex flex-col items-center justify-center h-full w-full text-muted-foreground gap-4 py-16">
@@ -13,7 +13,6 @@ const ChartEmptyState = ({ message, icon: Icon }: { message: string, icon: React
     <p className="text-center">{message}</p>
   </div>
 );
-
 
 export function SentMessagesChart({ messages, isLoading }: { messages: ScheduledMessage[], isLoading: boolean }) {
   const monthlyMessagesData = useMemo(() => {
@@ -24,7 +23,6 @@ export function SentMessagesChart({ messages, isLoading }: { messages: Scheduled
 
     for (let i = 5; i >= 0; i--) {
       const date = subMonths(now, i);
-      const monthKey = format(date, 'yyyy-MM');
       const monthName = format(date, 'MMM');
 
       data.push({
@@ -49,7 +47,7 @@ export function SentMessagesChart({ messages, isLoading }: { messages: Scheduled
                 }
             }
         } catch (e) {
-            // Ignore invalid date formats in mock or old data
+            // Ignore invalid date formats
         }
     });
 
@@ -108,6 +106,7 @@ export function NewPatientsChart({ patients, isLoading }: { patients: Patient[],
         const now = new Date();
         const data: { month: string, count: number }[] = [];
 
+        // Inicializa os últimos 6 meses com 0
         for (let i = 5; i >= 0; i--) {
             const date = subMonths(now, i);
             const monthName = format(date, 'MMM');
@@ -115,20 +114,32 @@ export function NewPatientsChart({ patients, isLoading }: { patients: Patient[],
         }
 
         patients.forEach(patient => {
-            // This is a proxy for creation date. In a real app, you'd have a createdAt field.
-            // We'll use lastAppointment for this example as it is more likely to exist.
              try {
-                const createdDate = patient.lastAppointment || patient.nextAppointment;
-                if (createdDate) {
-                    const joinDate = createdDate.toDate();
-                     const monthName = format(joinDate, 'MMM');
-                     const monthData = data.find(d => d.month === monthName);
-                     if(monthData) {
-                        monthData.count++;
-                     }
+                // --- LÓGICA CORRIGIDA ---
+                // Prioriza createdAt. Se não existir, tenta updatedAt ou fallback de consultas.
+                let dateToUse: any = patient.createdAt;
+
+                // Fallback para dados antigos ou importados incorretamente no passado
+                if (!dateToUse) dateToUse = (patient as any).updatedAt;
+                if (!dateToUse) dateToUse = patient.lastAppointment;
+                if (!dateToUse) dateToUse = patient.nextAppointment;
+
+                if (dateToUse) {
+                    // Verifica se é um Timestamp do Firestore (tem método toDate) ou Date normal
+                    const joinDate = typeof dateToUse.toDate === 'function' 
+                        ? dateToUse.toDate() 
+                        : new Date(dateToUse); // Converte string/date se necessário
+
+                    if (!isNaN(joinDate.getTime())) {
+                        const monthName = format(joinDate, 'MMM');
+                        const monthData = data.find(d => d.month === monthName);
+                        if(monthData) {
+                            monthData.count++;
+                        }
+                    }
                 }
             } catch (e) {
-                // Ignore invalid date formats
+                // Silently ignore invalid dates to not break the chart
             }
         });
 

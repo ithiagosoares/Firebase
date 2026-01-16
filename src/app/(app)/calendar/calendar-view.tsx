@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -6,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { type Appointment, type Patient } from "@/lib/types"
-import { collection, query, where, getDocs, DocumentData, Query, Timestamp } from "firebase/firestore"
+import { collection, doc, Timestamp } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
 import { isSameDay, format, parse } from "date-fns"
 import { toZonedTime } from "date-fns-tz"
@@ -15,69 +14,48 @@ import { useToast } from "@/hooks/use-toast"
 import { ClientSideDateTime } from "@/components/client-side-date-time"
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
-import { FirestorePermissionError } from "@/firebase/errors"
-import { errorEmitter } from "@/firebase/error-emitter"
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
-
-export default function CalendarView() { // Renomeado para CalendarView
+export default function CalendarView() {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  // Inicializa como undefined para evitar erro de hidratação com datas diferentes entre server/client
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [isMounted, setIsMounted] = useState(false) // Novo estado para controlar hidratação
 
   const { user } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
 
+  // Garante que o componente só renderiza a UI final após montar no cliente
+  useEffect(() => {
+    setIsMounted(true)
+    setSelectedDate(new Date()) // Define a data apenas no cliente
+  }, [])
+
   const patientsCollection = useMemoFirebase(() => {
     if (!user) return null;
     return collection(firestore, `users/${user.uid}/patients`);
   }, [firestore, user]);
+  
   const { data: patients, isLoading: isLoadingPatients } = useCollection<Patient>(patientsCollection);
 
-  const fetchAppointments = async () => {
-      if (!user || !firestore || !patients) return
-
-      try {
-        const appointmentPromises = patients.map(patient => {
-            const appointmentsRef = collection(firestore, `users/${user.uid}/patients/${patient.id}/appointments`);
-            return getDocs(appointmentsRef);
-        });
-
-        const appointmentSnapshots = await Promise.all(appointmentPromises);
-        
-        const fetchedAppointments = appointmentSnapshots.flatMap((snapshot, index) => {
-            const patientName = patients[index].name;
-            return snapshot.docs.map(doc => {
-                 const data = doc.data();
-                 return {
-                    id: doc.id,
-                    ...data,
-                    patientName: patientName || 'Paciente',
-                    type: data.notes || 'Consulta'
-                 } as Appointment
-            });
-        });
-        
-        setAllAppointments(fetchedAppointments);
-
-      } catch (serverError) {
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: `appointments for user ${user.uid}`, // Simplified path
-        });
-        errorEmitter.emit('permission-error', contextualError);
-      } finally {
-        setLoading(false)
-      }
-    }
-
   useEffect(() => {
-    if (user && firestore && !isLoadingPatients) {
-      fetchAppointments()
+    if (patients) {
+        const derivedAppointments: Appointment[] = patients
+            .filter(p => p.nextAppointment)
+            .map(p => ({
+                id: p.id,
+                dateTime: p.nextAppointment as Timestamp,
+                patientName: p.name,
+                type: 'Consulta',
+                userId: user?.uid || '',
+                patientId: p.id,
+                notes: ''
+            }));
+        
+        setAllAppointments(derivedAppointments);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, firestore, patients, isLoadingPatients])
+  }, [patients, user]);
 
   const appointmentDates = useMemo(() => {
     return allAppointments.map(apt => apt.dateTime.toDate());
@@ -99,7 +77,7 @@ export default function CalendarView() { // Renomeado para CalendarView
         toast({
             variant: "destructive",
             title: "Não é possível salvar",
-            description: "Selecione uma data e tenha certeza de que há pacientes cadastrados."
+            description: "É necessário ter pacientes cadastrados."
         });
         return;
     }
@@ -107,34 +85,30 @@ export default function CalendarView() { // Renomeado para CalendarView
     const firstPatient = patients[0];
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    // Combine date and time safely
     const localDateStr = format(selectedDate, 'yyyy-MM-dd');
     const localTimeStr = '11:00';
     const localDateTimeStr = `${localDateStr} ${localTimeStr}`;
-    
     const localDateTime = parse(localDateTimeStr, "yyyy-MM-dd HH:mm", new Date());
 
-    // Convert the explicit local date/time to a UTC date object before creating the Timestamp
     const utcDate = toZonedTime(localDateTime, timeZone);
     
-    const newAppointment = {
-        patientId: firstPatient.id,
-        userId: user.uid,
-        dateTime: Timestamp.fromDate(utcDate),
-        notes: "Consulta agendada"
-    };
-
-    const appointmentsCollection = collection(firestore, `users/${user.uid}/patients/${firstPatient.id}/appointments`);
-    await addDocumentNonBlocking(appointmentsCollection, newAppointment);
+    const patientDocRef = doc(firestore, `users/${user.uid}/patients/${firstPatient.id}`);
+    
+    await setDocumentNonBlocking(patientDocRef, {
+        nextAppointment: Timestamp.fromDate(utcDate),
+        status: 'Ativo',
+        updatedAt: Timestamp.now()
+    }, { merge: true });
 
     toast({
         title: "Consulta Agendada!",
-        description: `Consulta para ${firstPatient.name} em ${localDateTime.toLocaleString()} foi agendada.`
+        description: `Consulta para ${firstPatient.name} definida para ${localDateTime.toLocaleString()}.`
     });
-    fetchAppointments(); // Re-fetch appointments to update the UI
   };
 
-  if (loading || isLoadingPatients) {
+  // Se não estiver montado (Server side) OU estiver carregando dados, mostra Loader.
+  // Isso resolve o erro de Hydration Failed garantindo que Server e Client inicial sejam iguais (Loader).
+  if (!isMounted || isLoadingPatients) {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -145,7 +119,9 @@ export default function CalendarView() { // Renomeado para CalendarView
   return (
     <>
       <div className="flex justify-end mb-4">
-        <Button onClick={saveAppointment}>Agendar Consulta para 11:00</Button>
+        <Button onClick={saveAppointment} disabled={!patients || patients.length === 0}>
+            Agendar Consulta Teste (11:00)
+        </Button>
       </div>
       <div className="grid md:grid-cols-[1fr_350px] gap-8 items-start">
         <Card>
@@ -177,19 +153,21 @@ export default function CalendarView() { // Renomeado para CalendarView
             <div className="space-y-4">
               {todaysAppointments.length > 0 ? (
                 todaysAppointments.map((apt) => (
-                  <div key={apt.id} className="flex items-start gap-4">
-                    <div className="font-semibold"><ClientSideDateTime date={apt.dateTime} showTime={true} timeOnly={true} /></div>
+                  <div key={apt.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
+                    <div className="font-semibold text-primary">
+                        <ClientSideDateTime date={apt.dateTime} showTime={true} timeOnly={true} />
+                    </div>
                     <div className="flex-1">
                       <p className="font-medium">{apt.patientName}</p>
-                      <p className="text-sm text-muted-foreground">{apt.type}</p>
+                      <p className="text-sm text-muted-foreground">Consulta Agendada</p>
                     </div>
-                    <Badge variant={apt.type === 'Retorno' ? 'secondary' : 'default'}>
-                      {apt.type === 'Primeira Consulta' ? 'Novo' : apt.type === 'Retorno' ? 'Retorno' : 'Rotina'}
-                    </Badge>
+                    <Badge>Agendado</Badge>
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center">Nenhuma consulta para este dia.</p>
+                <div className="text-center py-8">
+                    <p className="text-muted-foreground">Nenhuma consulta para este dia.</p>
+                </div>
               )}
             </div>
           </CardContent>
