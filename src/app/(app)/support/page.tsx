@@ -53,8 +53,9 @@ export default function SupportPage() {
 
     try {
       // Reseta o progresso do onboarding no Firestore
+      // CORREÇÃO: Nome do campo ajustado para 'onboardingCompleted' para bater com o Wrapper
       await setDocumentNonBlocking(userDocRef, {
-        hasCompletedOnboarding: false,
+        onboardingCompleted: false, 
         onboardingProgress: []
       }, { merge: true });
 
@@ -65,7 +66,8 @@ export default function SupportPage() {
       });
 
       // Redireciona para o dashboard para começar o tour
-      router.push('/dashboard');
+      // CORREÇÃO: Adicionado o parâmetro '?tour=true' e usado replace
+      router.replace('/dashboard?tour=true');
 
     } catch (error) {
       console.error("Erro ao reiniciar o tour:", error);
@@ -121,7 +123,7 @@ export default function SupportPage() {
             <CardContent>
                 <Accordion type="single" collapsible className="w-full">
                     {faqs.map((faq, index) => (
-                         <AccordionItem key={index} value={`item-${index}`}>
+                          <AccordionItem key={index} value={`item-${index}`}>
                             <AccordionTrigger>{faq.question}</AccordionTrigger>
                             <AccordionContent>
                                 {faq.answer}

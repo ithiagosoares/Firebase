@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation";
-import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound, Mail, Zap, CalendarClock, FileText, User as UserIcon, Building2, ShieldCheck, AlertTriangle } from "lucide-react" // Adicionei AlertTriangle
+import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound, Mail, Zap, CalendarClock, FileText, User as UserIcon, Building2, ShieldCheck, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
 // Tipos locais
@@ -41,7 +41,8 @@ import { useDoc } from "@/firebase/firestore/use-doc"
 import { useUser, useAuth, useFirestore, useMemoFirebase } from "@/firebase/provider"
 
 // Utilitários e Funções do Firebase
-import { doc } from "firebase/firestore"
+// --- ALTERAÇÃO 1: Adicionado arrayUnion aqui ---
+import { doc, arrayUnion } from "firebase/firestore" 
 import { cn } from "@/lib/utils"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
@@ -128,6 +129,14 @@ export default function SettingsPage() {
   const handleTabChange = (value: string) => {
       setActiveTab(value);
       router.replace(`/settings#${value}`, { scroll: false });
+
+      // --- ALTERAÇÃO 2: Lógica do Onboarding ---
+      // Se clicar na aba WhatsApp, atualiza o progresso no Firebase
+      if (value === 'whatsapp' && userDocRef) {
+        setDocumentNonBlocking(userDocRef, {
+            onboardingProgress: arrayUnion('visited-settings', 'visited-whatsapp-tab')
+        }, { merge: true });
+      }
   };
 
   useEffect(() => {
