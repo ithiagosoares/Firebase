@@ -5,13 +5,13 @@ import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { adminDb } from '@/firebase/admin' 
 
-// Inicializa Stripe sem travar a versão (usa a instalada)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 })
 
-// --- 1. Função para acessar o Portal (Gerenciar/Cancelar) ---
 export async function createCustomerPortalSession(userId: string) {
+  let url: string | undefined;
+
   try {
     const userDoc = await adminDb!.collection('users').doc(userId).get();
     const userData = userDoc.data();
@@ -29,40 +29,50 @@ export async function createCustomerPortalSession(userId: string) {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: userData.stripeCustomerId,
       return_url: returnUrl,
-      // Se tiver o ID de configuração do portal (bpc_...), coloque aqui:
-      // configuration: 'bpc_1SrIAiEEZj...', 
+      // Se tiver a configuração do portal, descomente abaixo:
+      // configuration: 'bpc_...', 
     })
 
-    redirect(portalSession.url)
+    url = portalSession.url;
+    
   } catch (error) {
     console.error("Erro ao criar portal:", error);
     throw error;
   }
+
+  // O redirect DEVE ficar fora do try/catch
+  if (url) {
+    redirect(url);
+  }
 }
 
-// --- 2. Função de Checkout (Comprar Plano) ---
 export async function createCheckoutSession(userId: string, priceId: string) {
+  let url: string | undefined;
+
   try {
-    const userRef = adminDb!.collection('users').doc(userId);
+    // Verifica se adminDb foi inicializado corretamente
+    if (!adminDb) {
+      throw new Error("Erro de conexão com o banco de dados (Firebase Admin não inicializado).");
+    }
+
+    const userRef = adminDb.collection('users').doc(userId);
     const userDoc = await userRef.get();
     const userData = userDoc.data();
 
-    if (!userData) throw new Error("Usuário não encontrado");
+    if (!userData) throw new Error("Usuário não encontrado no banco de dados.");
 
     const headersList = await headers()
     const host = headersList.get('host')
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
     const origin = `${protocol}://${host}`;
 
-    // URLs atualizadas conforme seu código anterior
     const successUrl = `${origin}/settings?plan_upgraded=true`;
     const cancelUrl = `${origin}/settings`;
 
     let customerId = userData.stripeCustomerId;
 
-    // Se o usuário ainda não tem ID na Stripe, criamos agora e salvamos no Firebase
-    // Isso evita criar clientes duplicados na Stripe
     if (!customerId) {
+        console.log("Criando novo cliente na Stripe...");
         const customer = await stripe.customers.create({
             email: userData.email,
             name: userData.name,
@@ -74,7 +84,6 @@ export async function createCheckoutSession(userId: string, priceId: string) {
         await userRef.update({ stripeCustomerId: customerId });
     }
 
-    // Cria a sessão de checkout
     const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ['card'],
@@ -94,12 +103,17 @@ export async function createCheckoutSession(userId: string, priceId: string) {
         },
     });
 
-    if (!session.url) throw new Error("Erro ao gerar link de pagamento");
-
-    redirect(session.url);
+    if (!session.url) throw new Error("Erro ao gerar link de pagamento na Stripe.");
+    
+    url = session.url;
 
   } catch (error) {
-    console.error("Erro ao criar checkout:", error);
-    throw error;
+    console.error("Erro detalhado no checkout:", error);
+    throw error; // Isso vai aparecer no terminal do VS Code
+  }
+
+  // O redirect DEVE ficar fora do try/catch
+  if (url) {
+    redirect(url);
   }
 }
