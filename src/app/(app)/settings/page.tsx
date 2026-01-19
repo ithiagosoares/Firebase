@@ -46,8 +46,8 @@ import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { updateProfile, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updateEmail } from "firebase/auth"
 
-// --- IMPORTAÇÃO DA SERVER ACTION ---
-import { createCustomerPortalSession } from "@/app/actions/stripe"
+// --- IMPORTAÇÃO DA SERVER ACTION (Adicionado createCheckoutSession) ---
+import { createCustomerPortalSession, createCheckoutSession } from "@/app/actions/stripe"
 
 interface BillingHistoryItem {
     id: string;
@@ -63,8 +63,10 @@ export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('account');
   
-  // Transition para Server Actions (Para o Portal)
+  // Transition para Server Actions
   const [isPortalLoading, startPortalTransition] = useTransition();
+  // --- CORREÇÃO: Definindo a transição de checkout que faltava ---
+  const [isCheckoutLoading, startCheckoutTransition] = useTransition();
 
   const { user: authUser } = useUser();
   const auth = useAuth();
@@ -141,7 +143,7 @@ export default function SettingsPage() {
       }
   };
 
-  // --- NOVA FUNÇÃO: Acessar Portal ---
+  // --- Função para Acessar Portal (Server Action) ---
   const handleOpenPortal = () => {
     if (!authUser) return;
     
@@ -324,33 +326,26 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSubscribe = async (priceId: string, planId: string) => {
+  // --- FUNÇÃO CORRIGIDA: Usa Server Action para Checkout ---
+  const handleSubscribe = (priceId: string, planId: string) => {
     if (!authUser) {
         toast({ variant: "destructive", title: "Erro de Autenticação", description: "Você precisa estar logado para assinar um plano." });
         return;
     }
+    
+    // Define qual botão específico está carregando (para feedback visual)
     setIsRedirecting(planId);
-    try {
-        const res = await fetch('/api/stripe/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ priceId: priceId, userId: authUser.uid }),
-        });
-        if (!res.ok) {
-            const { error } = await res.json();
-            throw new Error(error || 'Falha ao iniciar o processo de pagamento.');
+
+    // Usa a transição do React para chamar a Server Action
+    startCheckoutTransition(async () => {
+        try {
+            await createCheckoutSession(authUser.uid, priceId);
+        } catch (error: any) {
+            console.error("Error creating checkout session:", error);
+            toast({ variant: "destructive", title: "Erro ao Assinar", description: "Não foi possível redirecionar para o pagamento. Tente novamente." });
+            setIsRedirecting(null);
         }
-        const { url } = await res.json();
-        if (url) {
-            window.location.href = url;
-        } else {
-            throw new Error('A URL de redirecionamento não foi recebida.');
-        }
-    } catch (error: any) {
-        console.error("Error creating checkout session:", error);
-        toast({ variant: "destructive", title: "Erro ao Assinar", description: error.message || "Não foi possível redirecionar para o pagamento. Tente novamente." });
-        setIsRedirecting(null);
-    }
+    });
   };
 
   const handleCancelSubscription = async () => {
@@ -408,7 +403,6 @@ export default function SettingsPage() {
           </TabsList>
         </div>
         
-        {/* ... (Tabs Content de Account, Company e Whatsapp permanecem iguais) ... */}
         <TabsContent value="account" className="space-y-6">
             <Card>
                 <CardHeader>
