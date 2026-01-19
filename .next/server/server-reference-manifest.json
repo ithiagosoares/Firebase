@@ -1,5 +1,19 @@
 {
-  "node": {},
+  "node": {
+    "402a6e081b4b3aedb556567584836fd799bd1cb549": {
+      "workers": {
+        "app/(app)/settings/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2Fhome%2Fuser%2FVitalLink-VF%2Fsrc%2Fapp%2Factions%2Fstripe.ts%22%2C%5B%7B%22id%22%3A%22402a6e081b4b3aedb556567584836fd799bd1cb549%22%2C%22exportedName%22%3A%22createCustomerPortalSession%22%2C%22filename%22%3A%22app%2Factions%2Fstripe.ts%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": true
+        }
+      },
+      "layer": {
+        "app/(app)/settings/page": "action-browser"
+      },
+      "filename": "app/actions/stripe.ts",
+      "exportedName": "createCustomerPortalSession"
+    }
+  },
   "edge": {},
   "encryptionKey": "nKiSutlncuUD+JgcBqwPwG7SkvWx2FBLkLYYCWjsXx8="
 }

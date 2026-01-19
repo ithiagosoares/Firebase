@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation";
-import { Upload, ExternalLink, Save, Loader2, CheckCircle, KeyRound, Mail, Zap, CalendarClock, FileText, User as UserIcon, Building2, ShieldCheck, AlertTriangle } from "lucide-react"
+import { useState, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation";
+import { Upload, ExternalLink, Loader2, CheckCircle, KeyRound, Mail, Zap, CalendarClock, FileText, User as UserIcon, Building2, ShieldCheck, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 
 // Tipos locais
@@ -23,7 +23,6 @@ import { WhatsappIntegration } from "@/components/whatsapp-integration";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-// Novos Imports para o Modal de Cancelamento
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +39,15 @@ import { useToast } from "@/hooks/use-toast"
 import { useDoc } from "@/firebase/firestore/use-doc"
 import { useUser, useAuth, useFirestore, useMemoFirebase } from "@/firebase/provider"
 
-// Utilitários e Funções do Firebase
-// --- ALTERAÇÃO 1: Adicionado arrayUnion aqui ---
+// Utilitários e Funções
 import { doc, arrayUnion } from "firebase/firestore" 
 import { cn } from "@/lib/utils"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { updateProfile, sendPasswordResetEmail, EmailAuthProvider, reauthenticateWithCredential, updateEmail } from "firebase/auth"
+
+// --- IMPORTAÇÃO DA SERVER ACTION ---
+import { createCustomerPortalSession } from "@/app/actions/stripe"
 
 interface BillingHistoryItem {
     id: string;
@@ -61,6 +62,9 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('account');
+  
+  // Transition para Server Actions (Para o Portal)
+  const [isPortalLoading, startPortalTransition] = useTransition();
 
   const { user: authUser } = useUser();
   const auth = useAuth();
@@ -130,13 +134,29 @@ export default function SettingsPage() {
       setActiveTab(value);
       router.replace(`/settings#${value}`, { scroll: false });
 
-      // --- ALTERAÇÃO 2: Lógica do Onboarding ---
-      // Se clicar na aba WhatsApp, atualiza o progresso no Firebase
       if (value === 'whatsapp' && userDocRef) {
         setDocumentNonBlocking(userDocRef, {
             onboardingProgress: arrayUnion('visited-settings', 'visited-whatsapp-tab')
         }, { merge: true });
       }
+  };
+
+  // --- NOVA FUNÇÃO: Acessar Portal ---
+  const handleOpenPortal = () => {
+    if (!authUser) return;
+    
+    startPortalTransition(async () => {
+        try {
+            await createCustomerPortalSession(authUser.uid);
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Erro",
+                description: "Não foi possível abrir o portal de pagamento. Verifique se você já possui um histórico de assinaturas."
+            });
+        }
+    });
   };
 
   useEffect(() => {
@@ -333,12 +353,10 @@ export default function SettingsPage() {
     }
   };
 
-  // --- NOVA FUNÇÃO DE CANCELAMENTO ---
   const handleCancelSubscription = async () => {
     if (!authUser) return;
     setIsCancelling(true);
     try {
-        // Exemplo de chamada para sua API de cancelamento
         const res = await fetch('/api/stripe/cancel-subscription', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -355,7 +373,6 @@ export default function SettingsPage() {
             description: "Sua assinatura não será renovada no próximo ciclo." 
         });
         setShowCancelDialog(false);
-        // Opcional: Recarregar a página ou atualizar o estado local para refletir a mudança
         window.location.reload(); 
 
     } catch (error: any) {
@@ -372,9 +389,9 @@ export default function SettingsPage() {
 
   const plans = [
     { id: "Free", name: "Free", price: "R$ 0", priceDescription: "", features: ["Até 5 conversas/mês", "Funcionalidades básicas"], isCurrent: userData?.plan === "Free" || !userData?.plan, priceId: null },
-    { id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", priceId: "price_1Sl73SEEZjNwuQwB7GmKavAu", features: ["Até 150 conversas/mês", "Fluxos de automação", "Templates de mensagens", "Suporte via e-mail"], isCurrent: userData?.plan === "Essencial" },
-    { id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", priceId: "price_1Sl73CEEZjNwuQwB1vSGMOED", features: ["Até 300 conversas/mês", "Tudo do Plano Essencial", "Relatórios de envio", "Suporte prioritário"], isCurrent: userData?.plan === "Profissional" },
-    { id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", priceId: "price_1Sl73fEEZjNwuQwBaAdKiJp4", features: ["Até 750 conversas/mês", "Tudo do Plano Profissional", "API de integração (Em Breve)", "Gerente de conta dedicado"], isCurrent: userData?.plan === "Premium" },
+    { id: "Essencial", name: "Essencial", price: "R$ 79", priceDescription: "/mês", priceId: "price_1SaEtIEEZjNwuQwBmR30ax57", features: ["Até 150 conversas/mês", "Fluxos de automação", "Templates de mensagens", "Suporte via e-mail"], isCurrent: userData?.plan === "Essencial" },
+    { id: "Profissional", name: "Profissional", price: "R$ 149", priceDescription: "/mês", highlight: "Mais escolhido", priceId: "price_1SZaPNEEZjNwuQwBIP1smLIm", features: ["Até 300 conversas/mês", "Tudo do Plano Essencial", "Relatórios de envio", "Suporte prioritário"], isCurrent: userData?.plan === "Profissional" },
+    { id: "Premium", name: "Premium", price: "R$ 299", priceDescription: "/mês", priceId: "price_1SaEyPEEZjNwuQwBGrutOkgy", features: ["Até 750 conversas/mês", "Tudo do Plano Profissional", "API de integração (Em Breve)", "Gerente de conta dedicado"], isCurrent: userData?.plan === "Premium" },
   ];
 
   return (
@@ -521,7 +538,6 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {plans.map((plan) => (
                     <Card key={plan.id} className={cn("flex flex-col", plan.highlight && "border-primary shadow-lg relative")}>
-                        {/* Badge 'Mais Escolhido' */}
                         {plan.highlight && (
                             <div className="absolute -top-3 left-0 right-0 flex justify-center">
                                 <Badge variant="default" className="shadow-sm">{plan.highlight}</Badge>
@@ -535,11 +551,9 @@ export default function SettingsPage() {
                             <ul className="space-y-2 text-sm text-muted-foreground">{plan.features.map((feature, index) => <li key={index} className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-500"/>{feature}</li>)}</ul>
                         </CardHeader>
                         
-                        {/* --- Lógica Atualizada do Footer --- */}
                         <CardFooter className="flex flex-col gap-2">
                             {plan.isCurrent ? (
                                 <>
-                                    {/* CORREÇÃO AQUI: Removi o hoverEffect e adicionei hover:bg-muted/50 no className */}
                                     <Button 
                                         variant="outline" 
                                         className="w-full bg-muted/50 cursor-default hover:bg-muted/50" 
@@ -580,7 +594,6 @@ export default function SettingsPage() {
             </div>
         </TabsContent>
 
-        {/* ... (Tabs Content de Payment e Policy permanecem iguais) ... */}
         <TabsContent value="payment">
             <Card>
                 <CardHeader>
@@ -641,8 +654,13 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button asChild>
-                        <Link href="https://billing.stripe.com/p/login/test_7sI9CEd6A6A06k0288" target="_blank"><ExternalLink className="mr-2 h-4 w-4"/> Acessar Portal de Pagamento</Link>
+                    {/* --- BOTÃO ATUALIZADO PARA USAR A NOVA SERVER ACTION --- */}
+                    <Button 
+                        onClick={handleOpenPortal} 
+                        disabled={isPortalLoading}
+                    >
+                        {isPortalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ExternalLink className="mr-2 h-4 w-4"/>}
+                        Acessar Portal de Pagamento
                     </Button>
                 </CardFooter>
             </Card>

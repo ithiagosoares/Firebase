@@ -10,7 +10,8 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, Users, AlertCircle, Calendar, PlusCircle, FileText, Loader2 } from "lucide-react"
+// ALTERAÇÃO 1: Adicionado 'Workflow' aos imports
+import { MessageSquare, Users, AlertCircle, Calendar, PlusCircle, FileText, Loader2, Workflow } from "lucide-react"
 import Link from "next/link"
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
@@ -73,7 +74,6 @@ export default function DashboardView() {
   }, [patients, messages]);
 
   // Filtra pacientes para garantir que o GRÁFICO não quebre se faltar data
-  // Pacientes importados via CSV precisam ter o campo createdAt para aparecerem na linha do tempo
   const chartPatients = useMemo(() => {
     if (!patients) return [];
     return patients
@@ -86,11 +86,26 @@ export default function DashboardView() {
         });
   }, [patients]);
 
-
+  // ALTERAÇÃO 2: Atualizado o botão do meio para Workflows
   const quickLinks = [
-    { title: "Adicionar Paciente", icon: PlusCircle, href: "/patients", description: "Cadastre um novo paciente." },
-    { title: "Agendar Consulta", icon: Calendar, href: "/calendar", description: "Marque uma nova consulta." },
-    { title: "Criar Template", icon: FileText, href: "/templates", description: "Crie um novo modelo de mensagem." },
+    { 
+      title: "Adicionar Paciente", 
+      icon: PlusCircle, 
+      href: "/patients", 
+      description: "Cadastre um novo paciente." 
+    },
+    { 
+      title: "Criar Fluxo", 
+      icon: Workflow, 
+      href: "/workflows", 
+      description: "Crie automações de mensagens." 
+    },
+    { 
+      title: "Criar Template", 
+      icon: FileText, 
+      href: "/templates", 
+      description: "Crie um novo modelo de mensagem." 
+    },
   ]
   
   const isLoading = isUserLoading || isLoadingPatients || isLoadingMessages;
@@ -150,7 +165,6 @@ export default function DashboardView() {
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 mt-8">
-        {/* Passamos chartPatients (filtrados) para evitar erros no gráfico */}
         <SentMessagesChart messages={messages || []} isLoading={isLoading} />
         <NewPatientsChart patients={chartPatients} isLoading={isLoading} />
       </div>

@@ -84,12 +84,11 @@ export interface WhatsAppTemplate {
     },
     // Manter
     {
-      name: 'convite_retorno_preventivo_6_meses',
+      name: 'convite_retorno_preventivo',
       category: 'MARKETING',
-      body: 'Olá, {{1}}! O tempo voa: já faz 6 meses da sua última visita à {{2}}. Vamos agendar sua limpeza preventiva para manter a saúde em dia? Responda para ver horários. ✨',
+      body: 'Olá, {{1}}! Já faz um tempo desde sua última visita. Vamos agendar seu check-up preventivo para manter sua saúde em dia? Responda para ver os horários disponíveis. ✨',
       variables: {
-        '{{1}}': 'Nome do Paciente',
-        '{{2}}': 'Nome da Clínica'
+        '{{1}}': 'Nome do Paciente'
       }
     },
     // Manter

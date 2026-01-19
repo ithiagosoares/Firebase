@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { PlusCircle, Loader2, FileText, Pencil, Copy, Send, Trash2, MoreVertical, Star, Sparkles, Import } from "lucide-react"
+import { PlusCircle, Loader2, Pencil, Copy, Send, Trash2, MoreVertical, Star, Sparkles, BookTemplate } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -26,15 +26,13 @@ import { cn } from "@/lib/utils"
 import { useFirebase, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
 
-// --- 1. IMPORTANTE: Importe o arquivo de dados ---
-import { defaultTemplates } from "@/data/defaultTemplates.ts"
+import { TemplateLibraryDialog } from "@/components/template-library-dialog"
 
 export default function TemplatesView() {
   const { firestore, user } = useFirebase()
   const { toast } = useToast()
   
-  // Estado de loading específico para a importação
-  const [isSeeding, setIsSeeding] = useState(false)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
 
   const templatesCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null
@@ -42,50 +40,6 @@ export default function TemplatesView() {
   }, [firestore, user]);
 
   const { data: templates, isLoading } = useCollection<Template>(templatesCollection);
-
-  // --- 2. NOVA FUNÇÃO: Carregar Templates Sugeridos ---
-  const handleLoadDefaults = async () => {
-    if (!firestore || !user || !templatesCollection) return;
-
-    setIsSeeding(true);
-    const batch = writeBatch(firestore); // Batch permite várias operações juntas
-
-    try {
-      defaultTemplates.forEach((tpl) => {
-        // Cria uma referência de documento nova (ID automático)
-        const newDocRef = doc(templatesCollection);
-        
-        // Mapeia os dados do TS para o formato do Firebase
-        batch.set(newDocRef, {
-            title: tpl.name, // O arquivo usa 'name', seu banco usa 'title'
-            body: tpl.body,
-            category: tpl.category,
-            // Extrai apenas as chaves (ex: ['{{1}}', '{{2}}'])
-            variables: Object.keys(tpl.variables), 
-            isDefault: false,
-            createdAt: new Date()
-        });
-      });
-
-      // Executa todas as gravações
-      await batch.commit();
-
-      toast({
-        title: "Sucesso!",
-        description: "Carregamos 11 templates prontos para uso.",
-      });
-
-    } catch (error) {
-      console.error("Erro ao importar defaults:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os templates.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSeeding(false);
-    }
-  };
 
   const handleDeleteTemplate = async (templateId: string) => {
     if (!firestore || !user) return;
@@ -115,7 +69,7 @@ export default function TemplatesView() {
         await addDoc(templatesCollection, newTemplate);
         toast({
           title: "Template duplicado!",
-          description: `O template foi copiado com sucesso.`
+          description: "O template foi copiado com sucesso."
         })
     } catch(error) {
         console.error("Erro ao duplicar:", error)
@@ -162,7 +116,6 @@ export default function TemplatesView() {
     }
   };
 
-  // --- 3. ATUALIZADO: Empty State com opção de importar ---
   const renderEmptyState = () => (
     <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-8 min-h-[300px]">
       <div className="flex flex-col items-center gap-3 text-center p-8 max-w-md">
@@ -171,19 +124,18 @@ export default function TemplatesView() {
         </div>
         <h3 className="text-2xl font-bold tracking-tight">Comece com templates prontos</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Você pode criar um do zero ou carregar nossa lista de modelos testados para clínicas.
+          Nossa galeria possui modelos testados para confirmação, lembretes e marketing.
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
-            <Button onClick={handleLoadDefaults} disabled={isSeeding} variant="secondary">
-                {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Import className="mr-2 h-4 w-4" />}
-                Carregar Sugestões
+        <div className="flex flex-col gap-3 w-full justify-center items-center">
+            <Button onClick={() => setIsLibraryOpen(true)} className="w-full sm:w-auto">
+                <BookTemplate className="mr-2 h-4 w-4" />
+                Abrir Galeria de Modelos
             </Button>
             
-            <Button asChild>
+            <Button asChild variant="link" className="text-muted-foreground">
                 <Link href="/templates/new">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Criar do Zero
+                   ou criar do zero
                 </Link>
             </Button>
         </div>
@@ -199,44 +151,53 @@ export default function TemplatesView() {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
             <h2 className="text-2xl font-bold tracking-tight">Meus Templates</h2>
             <p className="text-muted-foreground">Gerencie as mensagens automáticas do sistema.</p>
         </div>
-        {/* Só mostra o botão de criar aqui se JÁ TIVER templates. Se não, mostra no EmptyState */}
-        {templates && templates.length > 0 && (
-            <div className="flex gap-2">
-                 {/* Opcional: Botão para recarregar defaults mesmo se já tiver lista (cuidado com duplicatas) */}
-                <Button variant="outline" size="sm" onClick={handleLoadDefaults} disabled={isSeeding}>
-                    {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                    Restaurar Padrões
-                </Button>
-                <Button asChild>
-                    <Link href="/templates/new"><PlusCircle className="mr-2 h-4 w-4" />Criar Template</Link>
-                </Button>
-            </div>
-        )}
-      </div>
+        {/* 
+        <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={() => setIsLibraryOpen(true)} className="flex-1 sm:flex-none">
+                <BookTemplate className="mr-2 h-4 w-4" />
+                Galeria
+            </Button>
 
+            <Button asChild variant="outline" className="flex-1 sm:flex-none">
+                <Link href="/templates/new">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Novo
+                </Link>
+            </Button>
+        </div>
+        */} 
+      </div>
+         
       {templates && templates.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
             <Card key={template.id} className="flex flex-col hover:border-primary/40 transition-colors group relative">
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
-                  <div className="space-y-1">
-                      <CardTitle className="truncate text-base">{template.title}</CardTitle>
+                  {/* --- CORREÇÃO AQUI: Adicionado flex-1 e min-w-0 --- */}
+                  <div className="space-y-1 flex-1 min-w-0">
+                      {/* Adicionado title={} para mostrar o nome completo ao passar o mouse */}
+                      <CardTitle className="truncate text-base" title={template.title}>
+                        {template.title}
+                      </CardTitle>
                       <div className="flex gap-2">
                           <span className={cn(
                               "text-[10px] px-2 py-0.5 rounded-full font-medium border",
                               template.category === 'MARKETING' 
                                 ? "bg-purple-100 text-purple-700 border-purple-200" 
+                                : template.category === 'Financeiro'
+                                ? "bg-green-100 text-green-700 border-green-200"
                                 : "bg-blue-100 text-blue-700 border-blue-200"
                           )}>
                               {template.category || 'GERAL'}
                           </span>
                       </div>
                   </div>
+                  {/* O botão de estrela tem shrink-0, garantindo que ele nunca seja esmagado */}
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -284,6 +245,11 @@ export default function TemplatesView() {
       ) : (
         renderEmptyState()
       )}
+
+      <TemplateLibraryDialog 
+        open={isLibraryOpen} 
+        onOpenChange={setIsLibraryOpen} 
+      />
     </>
   )
 }

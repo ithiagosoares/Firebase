@@ -41,15 +41,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(app)/dashboard/page.js"
     ],
-    "/(app)/calendar/page": [
+    "/(app)/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(app)/calendar/page.js"
-    ],
-    "/(app)/patients/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(app)/patients/page.js"
+      "static/chunks/app/(app)/settings/page.js"
     ]
   }
 }
