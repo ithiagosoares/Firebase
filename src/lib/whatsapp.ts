@@ -1,6 +1,7 @@
 import { db } from "@/lib/firebase-admin";
 
-// Modifiquei para receber o userId
+// Função para envio de TEXTO (Mensagem livre)
+// Útil apenas se a janela de 24h estiver aberta (cliente mandou msg antes)
 export async function sendMessage(userId: string, to: string, text: string) {
   
   // 1. Buscar credenciais do usuário no banco
@@ -18,8 +19,6 @@ export async function sendMessage(userId: string, to: string, text: string) {
 
   const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
   
-  // NOTA: Para iniciar conversas (primeira msg em 24h), você DEVE usar templates.
-  // Este payload 'text' só funciona se o usuário mandou msg pra você nas últimas 24h (janela de suporte).
   const payload = {
     messaging_product: "whatsapp",
     to: to,
@@ -53,9 +52,15 @@ export async function sendMessage(userId: string, to: string, text: string) {
   }
 }
 
-// Adicione isto ao final do arquivo src/lib/whatsapp.ts
-
-export async function sendTemplateMessage(userId: string, to: string, templateName: string, languageCode: string = "pt_BR") {
+// Função para envio de TEMPLATES (Obrigatório para iniciar conversas)
+// Adicionamos o parâmetro 'components' explicitamente tipado como any[] para evitar o erro TS
+export async function sendTemplateMessage(
+  userId: string, 
+  to: string, 
+  templateName: string, 
+  components: any[] = [], // <--- AQUI ESTAVA O PROBLEMA DE TIPAGEM
+  languageCode: string = "pt_BR"
+) {
   // 1. Buscar credenciais do usuário
   const userDoc = await db().collection("users").doc(userId).get();
   const userData = userDoc.data();
@@ -68,7 +73,7 @@ export async function sendTemplateMessage(userId: string, to: string, templateNa
 
   const url = `https://graph.facebook.com/v20.0/${session.phoneNumberId}/messages`;
 
-  // Payload específico para Templates
+  // Payload específico para Templates com Variáveis
   const payload = {
     messaging_product: "whatsapp",
     to: to,
@@ -77,7 +82,8 @@ export async function sendTemplateMessage(userId: string, to: string, templateNa
       name: templateName,
       language: {
         code: languageCode
-      }
+      },
+      components: components 
     }
   };
 

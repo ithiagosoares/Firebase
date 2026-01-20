@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -26,6 +25,9 @@ import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useDoc } from "@/firebase/firestore/use-doc"
 import { useCollection } from "@/firebase/firestore/use-collection"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+
+// --- ALTERAÇÃO 1: Importar os templates padrões ---
+import { defaultTemplates } from "@/data/defaultTemplates"
 
 const defaultStep: PartialWorkflowStep = {
     template: '',
@@ -102,34 +104,45 @@ export default function EditWorkflowPage() {
         return patients ? patients.map(p => ({ value: p.id, label: p.name })) : [];
     }, [patients]);
     
+    // --- ALTERAÇÃO 2: Mesclar templates padrões com os do banco ---
     const templateOptions = useMemo(() => {
-        return templates ? templates.map(t => ({ value: t.id, label: t.title })) : [];
+        const defaultOpts = defaultTemplates.map(t => ({
+            value: t.name,
+            label: t.name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        }));
+
+        const customOpts = templates ? templates.map(t => ({ 
+            value: t.id, 
+            label: t.title 
+        })) : [];
+
+        return [...defaultOpts, ...customOpts];
     }, [templates]);
 
   const handleSaveChanges = () => {
     if (!workflowDocRef) return;
 
-    const cleanedSteps = steps.map(step => {
-        if (!step.template) {
-            throw new Error("Todos os passos devem ter um template selecionado.");
-        }
-        if (step.schedule?.triggerType === 'relative') {
-            const { triggerType, quantity, unit, event } = step.schedule;
-            return { template: step.template, schedule: { triggerType, quantity, unit, event } };
-        } else if (step.schedule?.triggerType === 'specific') {
-            const { triggerType, dateTime } = step.schedule as any;
-            return { template: step.template, schedule: { triggerType, dateTime } };
-        }
-        throw new Error("Tipo de agendamento inválido em um dos passos.");
-    });
-
-    const updatedWorkflow = { title, patients: selectedPatients, steps: cleanedSteps };
-    
     try {
+        const cleanedSteps = steps.map(step => {
+            if (!step.template) {
+                throw new Error("Todos os passos devem ter um template selecionado.");
+            }
+            if (step.schedule?.triggerType === 'relative') {
+                const { triggerType, quantity, unit, event } = step.schedule;
+                return { template: step.template, schedule: { triggerType, quantity, unit, event } };
+            } else if (step.schedule?.triggerType === 'specific') {
+                const { triggerType, dateTime } = step.schedule as any;
+                return { template: step.template, schedule: { triggerType, dateTime } };
+            }
+            throw new Error("Tipo de agendamento inválido em um dos passos.");
+        });
+
+        const updatedWorkflow = { title, patients: selectedPatients, steps: cleanedSteps };
+        
         setDocumentNonBlocking(workflowDocRef, updatedWorkflow, { merge: true });
         toast({
-          title: "Fluxo salvo!",
-          description: "Suas alterações no fluxo foram salvas com sucesso.",
+            title: "Fluxo salvo!",
+            description: "Suas alterações no fluxo foram salvas com sucesso.",
         })
         router.push("/workflows");
     } catch (error) {

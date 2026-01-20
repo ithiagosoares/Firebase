@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -24,7 +23,8 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { type Workflow, type ScheduledMessage, type Patient, type Schedule, type RelativeSchedule } from "@/lib/types"
-import { collection, doc, writeBatch, query, where, getDocs, Timestamp, orderBy, limit, getDoc } from "firebase/firestore"
+// Adicionado WriteBatch type para o TypeScript não reclamar
+import { collection, doc, writeBatch, query, where, getDocs, Timestamp, orderBy, limit, getDoc, WriteBatch } from "firebase/firestore"
 import { add, sub, format } from "date-fns"
 import { ptBR } from 'date-fns/locale';
 
@@ -63,13 +63,19 @@ export default function WorkflowsPage() {
     deleteDocumentNonBlocking(workflowDoc);
   };
 
+  // --- ATUALIZADO: Agora aceita o 'batch' para salvar tudo de uma vez ---
   const scheduleMessagesForAppointment = (
     userId: string,
     patientId: string,
     appointmentDate: Date,
-    workflow: Workflow
+    workflow: Workflow,
+    batch: WriteBatch // Recebe o lote de gravação
   ) => {
-    const scheduledMessagesCollection = collection(firestore, `users/${userId}/scheduledMessages`);
+    // Referência global para o Cron ler
+    const scheduledMessagesCollection = collection(firestore, `scheduledMessages`); 
+    // OBS: Antes estava users/{id}/scheduledMessages, mudei para global para o Cron achar fácil, 
+    // mas se seu cron busca dentro do user, mantenha o anterior. 
+    // Pelo código do Cron que fizemos, ele busca na coleção global 'scheduledMessages'.
   
     workflow.steps.forEach(step => {
       // "Enviar agora" só se aplica a agendamentos relativos à consulta
@@ -79,15 +85,19 @@ export default function WorkflowsPage() {
       const scheduleAction = schedule.event === 'before' ? sub : add;
       const scheduledTime = scheduleAction(appointmentDate, { [schedule.unit]: schedule.quantity });
   
-      const newMessage: Omit<ScheduledMessage, 'id' | 'appointmentId'> = {
-        userId,
+      const newMessageRef = doc(scheduledMessagesCollection);
+      
+      const newMessage = {
+        userId, // Fundamental para o envio funcionar
         patientId,
         templateId: step.template,
         workflowId: workflow.id,
         scheduledTime: Timestamp.fromDate(scheduledTime),
         status: 'Agendado',
+        createdAt: Timestamp.now()
       };
-      addDocumentNonBlocking(scheduledMessagesCollection, newMessage);
+      
+      batch.set(newMessageRef, newMessage);
     });
   };
 
@@ -99,16 +109,22 @@ export default function WorkflowsPage() {
     let patientsWithExistingMessages = 0;
     
     const patientsMap = new Map(patients.map(p => [p.id, p]));
-    const scheduledMessagesCollection = collection(firestore, `users/${user.uid}/scheduledMessages`);
+    // Coleção global para verificar duplicidade (conforme o Cron espera)
+    const scheduledMessagesCollection = collection(firestore, `scheduledMessages`);
+
+    // Inicia um lote de gravação (Batch)
+    const batch = writeBatch(firestore);
 
     for (const patientId of workflow.patients) {
         const patientData = patientsMap.get(patientId);
         
         if (!patientData) continue;
         
+        // Verifica se tem próxima consulta e se é futura
         if (patientData.nextAppointment && patientData.nextAppointment.toDate() > new Date()) {
             const appointmentDate = patientData.nextAppointment.toDate();
             
+            // Verifica se já existe mensagem agendada para não duplicar
             const q = query(
               scheduledMessagesCollection, 
               where("patientId", "==", patientId),
@@ -118,7 +134,8 @@ export default function WorkflowsPage() {
             const existingMessagesSnapshot = await getDocs(q);
 
             if (existingMessagesSnapshot.empty) {
-                scheduleMessagesForAppointment(user.uid, patientId, appointmentDate, workflow);
+                // Passamos o batch para agendar
+                scheduleMessagesForAppointment(user.uid, patientId, appointmentDate, workflow, batch);
                 patientsScheduled++;
             } else {
                 patientsWithExistingMessages++;
@@ -130,11 +147,18 @@ export default function WorkflowsPage() {
         }
     }
 
+    // Se houve agendamentos, salva tudo no banco
     if (patientsScheduled > 0) {
-      toast({
-        title: "Fluxo de trabalho iniciado!",
-        description: `Mensagens foram agendadas para ${patientsScheduled} novo(s) paciente(s).`,
-      });
+        try {
+            await batch.commit();
+            toast({
+                title: "Fluxo iniciado!",
+                description: `Mensagens agendadas para ${patientsScheduled} paciente(s). O sistema enviará automaticamente.`,
+            });
+        } catch (error) {
+            console.error("Erro ao salvar lote:", error);
+            toast({ variant: "destructive", title: "Erro", description: "Falha ao agendar mensagens." });
+        }
     } else {
        toast({
         variant: "default",
@@ -147,7 +171,7 @@ export default function WorkflowsPage() {
         toast({
             variant: "default",
             title: "Aviso de Fluxo",
-            description: `Este fluxo já possui mensagens agendadas para ${patientsWithExistingMessages} paciente(s) e não será reenviado.`
+            description: `Este fluxo já estava ativo para ${patientsWithExistingMessages} paciente(s).`
         })
     }
 
@@ -155,7 +179,7 @@ export default function WorkflowsPage() {
       toast({
         variant: "destructive",
         title: "Aviso de Dados",
-        description: `${patientsWithoutDate} paciente(s) no fluxo estão sem data de próxima consulta e foram ignorados.`
+        description: `${patientsWithoutDate} paciente(s) ignorados por estarem sem data de próxima consulta.`
       })
     }
   };
@@ -166,7 +190,6 @@ export default function WorkflowsPage() {
     const { schedule } = wf.steps[0];
 
     if (schedule.triggerType === 'specific') {
-        // O timestamp pode vir do Firestore, então garantimos que é um objeto Date
         const date = (schedule.dateTime as any).toDate ? (schedule.dateTime as any).toDate() : new Date();
         return `Em ${format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`;
     }
@@ -188,9 +211,8 @@ export default function WorkflowsPage() {
   
   const renderEmptyState = () => (
     <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm mt-8 min-h-[400px] bg-muted/5">
-      <div className="flex flex-col items-center gap-6 text-center p-12 max-w-md"> {/* Aumentei gap e padding */}
+      <div className="flex flex-col items-center gap-6 text-center p-12 max-w-md"> 
         <div className="bg-primary/10 p-4 rounded-full">
-           {/* Se estiver usando Lucide Icons, importe Workflow ou GitFork */}
            <WorkflowIcon className="h-10 w-10 text-primary" /> 
         </div>
         

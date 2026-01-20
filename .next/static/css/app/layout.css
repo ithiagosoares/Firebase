@@ -998,6 +998,9 @@ video {
 .min-h-32 {
   min-height: 8rem;
 }
+.min-h-\[100px\] {
+  min-height: 100px;
+}
 .min-h-\[300px\] {
   min-height: 300px;
 }
@@ -1431,6 +1434,9 @@ video {
 }
 .whitespace-nowrap {
   white-space: nowrap;
+}
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
 }
 .rounded-2xl {
   border-radius: 1rem;
@@ -2046,6 +2052,9 @@ video {
 .text-foreground\/50 {
   color: hsl(var(--foreground) / 0.5);
 }
+.text-foreground\/80 {
+  color: hsl(var(--foreground) / 0.8);
+}
 .text-gray-200 {
   --tw-text-opacity: 1;
   color: rgb(229 231 235 / var(--tw-text-opacity, 1));
@@ -2109,6 +2118,10 @@ video {
 .text-purple-700 {
   --tw-text-opacity: 1;
   color: rgb(126 34 206 / var(--tw-text-opacity, 1));
+}
+.text-purple-800 {
+  --tw-text-opacity: 1;
+  color: rgb(107 33 168 / var(--tw-text-opacity, 1));
 }
 .text-red-500 {
   --tw-text-opacity: 1;
@@ -2442,6 +2455,11 @@ video {
   background-color: hsl(var(--background));
 }
 
+.hover\:bg-blue-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(191 219 254 / var(--tw-bg-opacity, 1));
+}
+
 .hover\:bg-card\/80:hover {
   background-color: hsl(var(--card) / 0.8);
 }
@@ -2486,6 +2504,11 @@ video {
 
 .hover\:bg-primary\/90:hover {
   background-color: hsl(var(--primary) / 0.9);
+}
+
+.hover\:bg-purple-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(233 213 255 / var(--tw-bg-opacity, 1));
 }
 
 .hover\:bg-secondary:hover {

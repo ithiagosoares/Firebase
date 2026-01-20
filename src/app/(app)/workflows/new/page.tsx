@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useMemo } from "react"
@@ -25,6 +24,9 @@ import { cn } from "@/lib/utils"
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase/provider"
 import { useCollection } from "@/firebase/firestore/use-collection"
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+
+// --- ALTERAÇÃO 1: Importar os templates padrões ---
+import { defaultTemplates } from "@/data/defaultTemplates"
 
 const defaultStep: PartialWorkflowStep = {
     template: '',
@@ -62,8 +64,19 @@ export default function NewWorkflowPage() {
         return patients ? patients.map(p => ({ value: p.id, label: p.name })) : [];
     }, [patients]);
     
+    // --- ALTERAÇÃO 2: Mesclar templates padrões com os do banco ---
     const templateOptions = useMemo(() => {
-        return templates ? templates.map(t => ({ value: t.id, label: t.title })) : [];
+        const defaultOpts = defaultTemplates.map(t => ({
+            value: t.name,
+            label: t.name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        }));
+
+        const customOpts = templates ? templates.map(t => ({ 
+            value: t.id, 
+            label: t.title 
+        })) : [];
+
+        return [...defaultOpts, ...customOpts];
     }, [templates]);
 
     const handleAddStep = () => {
@@ -78,11 +91,11 @@ export default function NewWorkflowPage() {
     const handleStepChange = (index: number, field: string, value: any) => {
         setSteps(prevSteps => {
             const newSteps = [...prevSteps];
-            const step = { ...newSteps[index] }; // Cópia superficial do passo
+            const step = { ...newSteps[index] }; 
 
             if (field.startsWith("schedule.")) {
                 const scheduleField = field.split(".")[1];
-                let newSchedule = { ...step.schedule }; // Cópia superficial do agendamento
+                let newSchedule = { ...step.schedule };
 
                 if (scheduleField === 'triggerType') {
                     if (value === 'relative') {
@@ -93,7 +106,6 @@ export default function NewWorkflowPage() {
                             event: 'before' 
                         };
                     } else {
-                        // Mantém a data/hora se já existir, senão define uma padrão
                         const existingSpecific = step.schedule?.triggerType === 'specific' ? (step.schedule as any).dateTime : new Date();
                         newSchedule = { 
                             triggerType: 'specific',
@@ -114,12 +126,11 @@ export default function NewWorkflowPage() {
         });
     };
 
-    // Handler específico para o calendário e input de hora
     const handleSpecificDateTimeChange = (index: number, newDate: Date | undefined, newTime: string | undefined) => {
         setSteps(prevSteps => {
             const newSteps = [...prevSteps];
             const step = { ...newSteps[index] };
-            if (step.schedule?.triggerType !== 'specific') return prevSteps; // Segurança
+            if (step.schedule?.triggerType !== 'specific') return prevSteps;
 
             const currentTimestamp = (step.schedule as any).dateTime;
             const currentDate = currentTimestamp ? currentTimestamp.toDate() : new Date();
@@ -146,30 +157,29 @@ export default function NewWorkflowPage() {
         if (!user) return;
         const workflowsCollection = collection(firestore, `users/${user.uid}/workflows`);
         
-        // Validação e limpeza dos dados
-        const cleanedSteps = steps.map(step => {
-            if (!step.template) {
-                throw new Error("Todos os passos devem ter um template selecionado.");
-            }
-            if (step.schedule?.triggerType === 'relative') {
-                const { triggerType, quantity, unit, event } = step.schedule;
-                return { template: step.template, schedule: { triggerType, quantity, unit, event } };
-            } else if (step.schedule?.triggerType === 'specific') {
-                const { triggerType, dateTime } = step.schedule as any;
-                return { template: step.template, schedule: { triggerType, dateTime } };
-            }
-            throw new Error("Tipo de agendamento inválido em um dos passos.");
-        });
-
-        const newWorkflow = {
-            title,
-            patients: selectedPatients,
-            steps: cleanedSteps,
-            active: true,
-            target: "Pacientes selecionados"
-        };
-
         try {
+            const cleanedSteps = steps.map(step => {
+                if (!step.template) {
+                    throw new Error("Todos os passos devem ter um template selecionado.");
+                }
+                if (step.schedule?.triggerType === 'relative') {
+                    const { triggerType, quantity, unit, event } = step.schedule;
+                    return { template: step.template, schedule: { triggerType, quantity, unit, event } };
+                } else if (step.schedule?.triggerType === 'specific') {
+                    const { triggerType, dateTime } = step.schedule as any;
+                    return { template: step.template, schedule: { triggerType, dateTime } };
+                }
+                throw new Error("Tipo de agendamento inválido em um dos passos.");
+            });
+
+            const newWorkflow = {
+                title,
+                patients: selectedPatients,
+                steps: cleanedSteps,
+                active: true,
+                target: "Pacientes selecionados"
+            };
+
             addDocumentNonBlocking(workflowsCollection, newWorkflow);
             toast({ title: "Fluxo salvo!", description: "Seu novo fluxo de automação foi criado." });
             router.push("/workflows");
