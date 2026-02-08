@@ -1,15 +1,10 @@
+'use client'
 
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getStripe } from '@/lib/stripe';
 
-// Garanta que a chave secreta da Stripe esteja configurada
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-});
+// Force this route to be rendered dynamically
+export const dynamic = 'force-dynamic';
 
 // Mapeamento de Price ID para o nome do plano para exibição
 const PLAN_DISPLAY_MAP: { [key: string]: string } = {
@@ -20,6 +15,7 @@ const PLAN_DISPLAY_MAP: { [key: string]: string } = {
 
 export async function POST(req: Request) {
   try {
+    const stripe = getStripe(); // Obtenha a instância do Stripe de forma preguiçosa
     const body = await req.json();
     const { stripeCustomerId } = body;
 
