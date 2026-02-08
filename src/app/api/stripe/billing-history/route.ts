@@ -1,9 +1,7 @@
-'use client'
-
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 
-// Force this route to be rendered dynamically
+// ✅ OBRIGATÓRIO: Força essa rota a ser dinâmica (impede erro de build)
 export const dynamic = 'force-dynamic';
 
 // Mapeamento de Price ID para o nome do plano para exibição
@@ -15,12 +13,13 @@ const PLAN_DISPLAY_MAP: { [key: string]: string } = {
 
 export async function POST(req: Request) {
   try {
-    const stripe = getStripe(); // Obtenha a instância do Stripe de forma preguiçosa
+    const stripe = getStripe(); // ✅ Lazy initialization (sua correção anterior)
+    
     const body = await req.json();
     const { stripeCustomerId } = body;
 
     if (!stripeCustomerId) {
-      return new NextResponse('Stripe Customer ID is required', { status: 400 });
+      return NextResponse.json({ error: 'Stripe Customer ID is required' }, { status: 400 });
     }
 
     // 1. Buscar o histórico de faturas (invoices)
@@ -29,8 +28,11 @@ export async function POST(req: Request) {
       limit: 24, // Limite para os últimos 2 anos de faturas
     });
 
-    const billingHistory = invoicesResponse.data.map(invoice => {
-        const priceId = invoice.lines.data[0]?.price?.id;
+    const billingHistory = invoicesResponse.data.map((invoice: any) => {
+        // Tenta pegar o ID do preço de várias formas seguras para evitar erro
+        const priceId = invoice.lines?.data?.[0]?.price?.id || 
+                        invoice.lines?.data?.[0]?.plan?.id;
+
         return {
             id: invoice.id,
             date: invoice.created,
@@ -57,6 +59,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('[STRIPE_BILLING_HISTORY_ERROR]', error);
-    return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
+    return NextResponse.json({ error: `Internal Server Error: ${error.message}` }, { status: 500 });
   }
 }
