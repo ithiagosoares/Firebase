@@ -1,26 +1,11 @@
-
 env:
-  # Secrets for the backend, sourced from Secret Manager
-  - variable: STRIPE_SECRET_KEY
-    secret: STRIPE_SECRET_KEY
-  - variable: STRIPE_WEBHOOK_SECRET
-    secret: STRIPE_WEBHOOK_SECRET
-  - variable: CRON_SECRET
-    secret: CRON_JOB_SECRET
-  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
-    secret: FIREBASE_SERVICE_ACCOUNT_KEY
-  - variable: META_WEBHOOK_VERIFY_TOKEN
-    secret: META_WEBHOOK_VERIFY_TOKEN
-  - variable: WHATSAPP_ACCESS_TOKEN
-    secret: WHATSAPP_ACCESS_TOKEN
-  - variable: WHATSAPP_PHONE_NUMBER_ID
-    secret: WHATSAPP_PHONE_NUMBER_ID
-  - variable: META_CLIENT_ID
-    secret: META_CLIENT_ID
-  - variable: META_CLIENT_SECRET
-    secret: META_CLIENT_SECRET
-    
-  # Public variables for the frontend client
+  # -----------------------------------------------------------
+  # ❌ REMOVI AS CHAVES PRIVADAS DAQUI PARA NÃO USAR O SECRET MANAGER
+  # As chaves privadas (STRIPE, FIREBASE_ADMIN, ETC) já estão
+  # configuradas manualmente no painel do Google Cloud Run.
+  # -----------------------------------------------------------
+
+  # Public variables for the frontend client (MANTENHA ESTAS)
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBcS5kZ_JPyMEGx938EAsRpai2WrPtOWQA
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
