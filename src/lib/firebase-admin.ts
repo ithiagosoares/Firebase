@@ -1,4 +1,3 @@
-
 import * as admin from 'firebase-admin';
 
 const FIREBASE_ADMIN_APP_NAME = 'vitalLinkAdmin';
@@ -9,10 +8,35 @@ interface FirebaseAdminCredentials {
   privateKey: string;
 }
 
-// Armazena a app inicializada para evitar múltiplas inicializações
+// Armazena a app inicializada (Singleton)
 let adminApp: admin.app.App;
 
+function getServiceAccountCredentials(): FirebaseAdminCredentials {
+  const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (!key) {
+    throw new Error('❌ ERRO CRÍTICO: Variável FIREBASE_SERVICE_ACCOUNT_KEY não encontrada nas variáveis de ambiente.');
+  }
+
+  // TENTATIVA 1: Tenta ler como JSON puro (caso você tenha colado o { ... })
+  try {
+    return JSON.parse(key) as FirebaseAdminCredentials;
+  } catch (e) {
+    // Falhou? Ignora e tenta a próxima estratégia.
+  }
+
+  // TENTATIVA 2: Tenta ler como Base64 (caso comece com 'ewog...')
+  try {
+    const decodedKey = Buffer.from(key, 'base64').toString('utf-8');
+    return JSON.parse(decodedKey) as FirebaseAdminCredentials;
+  } catch (e) {
+    console.error("❌ ERRO DE PARSE: Não foi possível ler a chave do Firebase.");
+    throw new Error("A FIREBASE_SERVICE_ACCOUNT_KEY não é um JSON válido e nem uma string Base64 válida.");
+  }
+}
+
 function initializeAdminApp() {
+  // Verifica se já existe para não iniciar duas vezes
   const alreadyCreatedApp = admin.apps.find(
     (app) => app?.name === FIREBASE_ADMIN_APP_NAME
   );
@@ -21,38 +45,15 @@ function initializeAdminApp() {
     return alreadyCreatedApp;
   }
 
-  // 1. Obter a variável de ambiente, que chega como uma string Base64.
-  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const credentials = getServiceAccountCredentials();
 
-  if (!serviceAccountBase64) {
-    throw new Error('A variável de ambiente FIREBASE_SERVICE_ACCOUNT_KEY não está definida ou está vazia.');
-  }
-
-  try {
-    // 2. DECIDIFICAR a string Base64 para obter o JSON puro.
-    const serviceAccountString = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
-    
-    // 3. ANALISAR (Parse) a string JSON para criar um objeto.
-    const credentials = JSON.parse(serviceAccountString) as FirebaseAdminCredentials;
-
-    // 4. Inicializar a app com as credenciais em formato de objeto.
-    const app = admin.initializeApp(
-      {
-        credential: admin.credential.cert(credentials),
-      },
-      FIREBASE_ADMIN_APP_NAME
-    );
-    return app;
-  } catch (error: any) {
-    console.error("### ERRO CRÍTICO AO INICIALIZAR FIREBASE ADMIN ###");
-    if (error.message.includes("Unexpected token")) {
-        console.error("Falha ao decodificar ou analisar a FIREBASE_SERVICE_ACCOUNT_KEY. Verifique se o segredo no Secret Manager contém um JSON VÁLIDO. A variável pode estar mal formatada ou não ser Base64.");
-    } else {
-        console.error("Falha ao analisar o JSON da FIREBASE_SERVICE_ACCOUNT_KEY. O valor decodificado não é um JSON válido.");
-    }
-    console.error("Erro original:", error.message);
-    throw new Error("Falha na inicialização do Firebase Admin. O servidor não pode operar.");
-  }
+  return admin.initializeApp(
+    {
+      credential: admin.credential.cert(credentials),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET, // Importante para o Storage funcionar
+    },
+    FIREBASE_ADMIN_APP_NAME
+  );
 }
 
 function getAdminApp() {
@@ -63,8 +64,9 @@ function getAdminApp() {
 }
 
 // ============================================================================================
-// 🔥 EXPORTAÇÕES CONVENIENTES (LAZY INITIALIZATION)
+// 🔥 EXPORTAÇÕES (Mantendo compatibilidade com seu código atual)
 // ============================================================================================
 
 export const db = () => getAdminApp().firestore();
 export const auth = () => getAdminApp().auth();
+export const storage = () => getAdminApp().storage(); // Adicionei caso precise no futuro
