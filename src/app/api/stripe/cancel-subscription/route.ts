@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase-admin"; // Importando a função db do seu arquivo
-import Stripe from "stripe";
+import { db } from "@/lib/firebase-admin"; 
+import { getStripe } from "@/lib/stripe"; // ✅ Importa a função segura que criamos
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia", // Verifique se sua versão bate com o package.json
-});
+// ✅ OBRIGATÓRIO: Impede que o Next.js tente rodar isso no Build
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    // ✅ Inicializa o Stripe SÓ AGORA (Lazy Loading)
+    // Assim ele pega a chave do Cloud Run em tempo de execução
+    const stripe = getStripe();
+
     const { userId } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    // AQUI ESTÁ A MUDANÇA PRINCIPAL: db() com parênteses
     const userDoc = await db().collection("users").doc(userId).get();
     const userData = userDoc.data();
 
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
       cancel_at_period_end: true,
     });
 
-    // Atualiza o status no Firebase imediatamente para refletir na UI
+    // Atualiza o status no Firebase imediatamente
     await db().collection("users").doc(userId).update({
         cancelAtPeriodEnd: true, 
     });
