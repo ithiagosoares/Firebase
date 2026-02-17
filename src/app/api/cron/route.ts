@@ -20,6 +20,9 @@ export async function GET(request: Request) {
 
   try {
     const now = Timestamp.now();
+    // DEBUG: Log para a hora atual do servidor
+    console.log("Agora (Timestamp.now()):", now.toDate());
+
     const scheduledMessagesRef = firestoreDb.collection('scheduledMessages');
     
     // Busca mensagens que estão 'Agendado' e cuja hora já chegou (ou passou)
@@ -29,10 +32,16 @@ export async function GET(request: Request) {
       .get();
 
     if (querySnapshot.empty) {
+      console.log("A query não retornou nenhum documento.");
       return NextResponse.json({ success: true, message: 'Nenhuma mensagem para enviar.' });
     }
 
     console.log(`CRON: ${querySnapshot.size} mensagem(ns) encontrada(s).`);
+
+    // DEBUG: Log para cada documento encontrado
+    querySnapshot.forEach(doc => {
+      console.log("Encontrado:", doc.data().scheduledTime.toDate());
+    });
 
     const processingPromises = querySnapshot.docs.map(async (doc) => {
       const message = { id: doc.id, ...doc.data() } as WithId<ScheduledMessage>;
@@ -70,21 +79,17 @@ export async function GET(request: Request) {
         }
 
         // 4. Monta as variáveis (Components) para a Meta
-        // A Meta exige um array de objetos para substituir {{1}}, {{2}}, etc.
         const components = [
             {
                 type: "body",
                 parameters: [
-                    // {{1}} = Nome do Paciente
                     { type: "text", text: patient.name },  
-                    // {{2}} = Nome da Clínica
                     { type: "text", text: clinicName }     
                 ]
             }
         ];
 
-        // 5. Envia a mensagem (Agora sem erro de tipagem)
-        // A ordem é: userId, telefone, nomeTemplate, components
+        // 5. Envia a mensagem
         await sendTemplateMessage(message.userId, patient.phone, templateName, components);
 
         // 6. Atualiza o status no banco
