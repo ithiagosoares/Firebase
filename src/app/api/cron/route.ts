@@ -20,15 +20,16 @@ export async function GET(request: Request) {
 
   try {
     const now = Timestamp.now();
+
     // DEBUG: Log para a hora atual do servidor
     console.log("Agora (Timestamp.now()):", now.toDate());
 
     const scheduledMessagesRef = firestoreDb.collection('scheduledMessages');
     
-    // Busca mensagens que estão 'Agendado' e cuja hora já chegou (ou passou)
+    // Busca mensagens que estão 'scheduled' e cuja hora já chegou (ou passou)
     const querySnapshot = await scheduledMessagesRef
-      .where('status', '==', 'Agendado')
-      .where('scheduledTime', '<=', now)
+      .where('status', '==', 'scheduled')
+      .where('sendAt', '<=', now)
       .get();
 
     if (querySnapshot.empty) {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
 
     // DEBUG: Log para cada documento encontrado
     querySnapshot.forEach(doc => {
-      console.log("Encontrado:", doc.data().scheduledTime.toDate());
+      console.log("Encontrado:", doc.data().sendAt.toDate());
     });
 
     const processingPromises = querySnapshot.docs.map(async (doc) => {
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
         const clinicName = userData?.clinicName || "Sua Clínica";
 
         if (!patientDoc.exists) {
-            throw new Error(`Paciente ${message.patientId} não encontrado.`);
+          throw new Error(`Paciente ${message.patientId} não encontrado.`);
         }
         
         const patient = patientDoc.data() as Patient;
@@ -65,40 +66,45 @@ export async function GET(request: Request) {
         // 3. Resolve o Template
         let templateName = message.templateId;
         
-        // Verifica se é um template padrão
         const defaultTemp = defaultTemplates.find(t => t.name === message.templateId);
         
         if (defaultTemp) {
-            templateName = defaultTemp.name; 
+          templateName = defaultTemp.name; 
         } else {
-            // Se não é padrão, busca nos templates personalizados do usuário
-            const templateDoc = await firestoreDb.doc(`users/${message.userId}/messageTemplates/${message.templateId}`).get();
-            if (templateDoc.exists) {
-                templateName = templateDoc.data()?.name || templateDoc.data()?.title; 
-            }
+          const templateDoc = await firestoreDb.doc(`users/${message.userId}/messageTemplates/${message.templateId}`).get();
+          if (templateDoc.exists) {
+            templateName = templateDoc.data()?.name || templateDoc.data()?.title; 
+          }
         }
 
         // 4. Monta as variáveis (Components) para a Meta
         const components = [
-            {
-                type: "body",
-                parameters: [
-                    { type: "text", text: patient.name },  
-                    { type: "text", text: clinicName }     
-                ]
-            }
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: patient.name },  
+              { type: "text", text: clinicName }     
+            ]
+          }
         ];
 
         // 5. Envia a mensagem
         await sendTemplateMessage(message.userId, patient.phone, templateName, components);
 
         // 6. Atualiza o status no banco
-        await messageRef.update({ status: 'Enviado', sentAt: Timestamp.now() });
+        await messageRef.update({ 
+          status: 'sent', 
+          sentAt: Timestamp.now() 
+        });
+
         console.log(`CRON: Mensagem ${message.id} enviada para ${patient.name}.`);
 
       } catch (error: any) {
         console.error(`CRON: Falha msg ${message.id}:`, error.message);
-        await messageRef.update({ status: 'Falhou', error: error.message });
+        await messageRef.update({ 
+          status: 'failed', 
+          error: error.message 
+        });
       }
     });
 
