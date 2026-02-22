@@ -1,100 +1,99 @@
 import { db } from "@/lib/firebase-admin";
 
-// Função para envio de TEXTO (Mensagem livre)
-// Útil apenas se a janela de 24h estiver aberta (cliente mandou msg antes)
-export async function sendMessage(userId: string, to: string, text: string) {
-  
-  // 1. Buscar credenciais do usuário no banco
+/**
+ * Normaliza número para padrão E.164 (remove tudo que não for número)
+ * Exemplo: (11) 99999-9999 -> 5511999999999
+ */
+function formatToE164(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+/**
+ * Busca sessão do WhatsApp do usuário
+ */
+async function getWhatsappSession(userId: string) {
   const userDoc = await db().collection("users").doc(userId).get();
   const userData = userDoc.data();
   const session = userData?.whatsappSession;
 
-  if (!session || !session.accessToken || !session.phoneNumberId) {
-    console.error(`ERRO: Usuário ${userId} não tem WhatsApp conectado.`);
-    throw new Error("WhatsApp não conectado. Vá em Configurações > WhatsApp para conectar.");
+  if (!session?.accessToken || !session?.phoneNumberId) {
+    throw new Error("WhatsApp não conectado. Vá em Configurações > WhatsApp.");
   }
 
-  const accessToken = session.accessToken;
-  const phoneNumberId = session.phoneNumberId;
+  return session;
+}
 
-  const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
-  
+/**
+ * Envio de mensagem TEXTO (janela 24h aberta)
+ */
+export async function sendMessage(
+  userId: string,
+  to: string,
+  text: string
+) {
+  const session = await getWhatsappSession(userId);
+
+  const url = `https://graph.facebook.com/v20.0/${session.phoneNumberId}/messages`;
+
   const payload = {
     messaging_product: "whatsapp",
-    to: to,
+    to: formatToE164(to),
     type: "text",
     text: { body: text },
   };
 
-  try {
-    console.log(`ENVIANDO MENSAGEM (User: ${userId}) -> Para: ${to}`);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('Erro Meta API:', JSON.stringify(result, null, 2));
-      throw new Error(result.error?.message || 'Erro ao enviar mensagem');
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Erro rede/fetch:', error);
-    throw error;
-  }
+  return sendToMeta(url, session.accessToken, payload, userId);
 }
 
-// Função para envio de TEMPLATES (Obrigatório para iniciar conversas)
-// Adicionamos o parâmetro 'components' explicitamente tipado como any[] para evitar o erro TS
+/**
+ * Envio de TEMPLATE (início de conversa)
+ */
 export async function sendTemplateMessage(
-  userId: string, 
-  to: string, 
-  templateName: string, 
-  components: any[] = [], // <--- AQUI ESTAVA O PROBLEMA DE TIPAGEM
+  userId: string,
+  to: string,
+  templateName: string,
+  components: any[] = [],
   languageCode: string = "pt_BR"
 ) {
-  // 1. Buscar credenciais do usuário
-  const userDoc = await db().collection("users").doc(userId).get();
-  const userData = userDoc.data();
-  const session = userData?.whatsappSession;
-
-  if (!session || !session.accessToken || !session.phoneNumberId) {
-    console.error(`ERRO: Usuário ${userId} não tem WhatsApp conectado.`);
-    throw new Error("WhatsApp não conectado.");
-  }
+  const session = await getWhatsappSession(userId);
 
   const url = `https://graph.facebook.com/v20.0/${session.phoneNumberId}/messages`;
 
-  // Payload específico para Templates com Variáveis
   const payload = {
     messaging_product: "whatsapp",
-    to: to,
+    to: formatToE164(to),
     type: "template",
     template: {
       name: templateName,
       language: {
         code: languageCode
       },
-      components: components 
+      components
     }
   };
 
+  return sendToMeta(url, session.accessToken, payload, userId);
+}
+
+/**
+ * Função centralizada de envio para Meta
+ */
+async function sendToMeta(
+  url: string,
+  accessToken: string,
+  payload: any,
+  userId: string
+) {
   try {
-    console.log(`ENVIANDO TEMPLATE (User: ${userId}) -> Para: ${to}, Template: ${templateName}`);
+    console.log("=== ENVIO META ===");
+    console.log("User:", userId);
+    console.log("Payload:", JSON.stringify(payload));
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
@@ -102,13 +101,28 @@ export async function sendTemplateMessage(
     const result = await response.json();
 
     if (!response.ok) {
-      console.error('Erro Meta API (Template):', JSON.stringify(result, null, 2));
-      throw new Error(result.error?.message || 'Erro ao enviar template');
+      console.error("Erro Meta API:", JSON.stringify(result, null, 2));
+
+      const errorMessage =
+        result?.error?.message ||
+        "Erro desconhecido ao enviar mensagem";
+
+      throw new Error(errorMessage);
     }
 
-    return result;
-  } catch (error) {
-    console.error('Erro ao enviar template:', error);
+    const messageId = result?.messages?.[0]?.id;
+
+    console.log("Mensagem enviada com sucesso.");
+    console.log("Meta Message ID:", messageId);
+
+    return {
+      success: true,
+      messageId,
+      raw: result
+    };
+
+  } catch (error: any) {
+    console.error("Erro ao enviar para Meta:", error?.message);
     throw error;
   }
 }

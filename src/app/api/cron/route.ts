@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
 import { db } from '@/lib/firebase-admin';
 import { Patient, ScheduledMessage, WithId } from '@/lib/types';
-import { sendTemplateMessage } from '@/lib/whatsapp'; 
+import { sendTemplateMessage } from '@/lib/whatsapp';
 import { defaultTemplates } from '@/data/defaultTemplates';
 
-export const dynamic = 'force-dynamic'; 
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  // Verificação de Segurança
   const cronSecret = process.env.CRON_SECRET;
   const authorization = request.headers.get('authorization');
 
@@ -16,104 +15,150 @@ export async function GET(request: Request) {
     return new NextResponse('Não autorizado', { status: 401 });
   }
 
-  const firestoreDb = db(); // Instância do Admin
+  const firestoreDb = db();
 
   try {
     const now = Timestamp.now();
 
-    // DEBUG: Log para a hora atual do servidor
-    console.log("Agora (Timestamp.now()):", now.toDate());
-
-    const scheduledMessagesRef = firestoreDb.collection('scheduledMessages');
-    
-    // Busca mensagens que estão 'scheduled' e cuja hora já chegou (ou passou)
-    const querySnapshot = await scheduledMessagesRef
-      .where('status', '==', 'scheduled')
+    const querySnapshot = await firestoreDb
+      .collection('scheduledMessages')
+      .where('status', '==', 'Agendado') // ✅ CORRIGIDO
       .where('sendAt', '<=', now)
       .get();
 
     if (querySnapshot.empty) {
-      console.log("A query não retornou nenhum documento.");
-      return NextResponse.json({ success: true, message: 'Nenhuma mensagem para enviar.' });
+      return NextResponse.json({
+        success: true,
+        message: 'Nenhuma mensagem para enviar.'
+      });
     }
 
     console.log(`CRON: ${querySnapshot.size} mensagem(ns) encontrada(s).`);
 
-    // DEBUG: Log para cada documento encontrado
-    querySnapshot.forEach(doc => {
-      console.log("Encontrado:", doc.data().sendAt.toDate());
-    });
-
     const processingPromises = querySnapshot.docs.map(async (doc) => {
-      const message = { id: doc.id, ...doc.data() } as WithId<ScheduledMessage>;
       const messageRef = doc.ref;
 
       try {
-        // 1. Busca dados do Paciente na subcoleção do usuário correto
-        const patientDoc = await firestoreDb.doc(`users/${message.userId}/patients/${message.patientId}`).get();
+        // 🔐 LOCK TRANSACIONAL (evita duplicação)
+        const lockedMessage = await firestoreDb.runTransaction(async (transaction) => {
+          const freshDoc = await transaction.get(messageRef);
         
-        // 2. Busca dados da Clínica para preencher variáveis como {{2}}
-        const userDoc = await firestoreDb.collection('users').doc(message.userId).get();
-        const userData = userDoc.data();
-        const clinicName = userData?.clinicName || "Sua Clínica";
+          if (!freshDoc.exists) {
+            throw new Error('Documento não existe.');
+          }
+        
+          const data = freshDoc.data() as ScheduledMessage;
+        
+          if (data.status !== 'Agendado') {
+            return null;
+          }
+        
+          transaction.update(messageRef, {
+            status: 'Processando',
+            processingAt: Timestamp.now()
+          });
+        
+          // ✅ CORREÇÃO AQUI
+          return { ...data, id: freshDoc.id };
+        });
+        
+
+        if (!lockedMessage) {
+          console.log(`CRON: Mensagem ${doc.id} já processada por outro worker.`);
+          return;
+        }
+
+        const message = lockedMessage as WithId<ScheduledMessage>;
+
+        // 🔎 Busca paciente
+        const patientDoc = await firestoreDb
+          .doc(`users/${message.userId}/patients/${message.patientId}`)
+          .get();
 
         if (!patientDoc.exists) {
           throw new Error(`Paciente ${message.patientId} não encontrado.`);
         }
-        
+
         const patient = patientDoc.data() as Patient;
 
-        // 3. Resolve o Template
+        // 🔎 Busca clínica
+        const userDoc = await firestoreDb
+          .collection('users')
+          .doc(message.userId)
+          .get();
+
+        const clinicName = userDoc.data()?.clinicName || "Sua Clínica";
+
+        // 🔎 Resolve template
         let templateName = message.templateId;
-        
-        const defaultTemp = defaultTemplates.find(t => t.name === message.templateId);
-        
-        if (defaultTemp) {
-          templateName = defaultTemp.name; 
-        } else {
-          const templateDoc = await firestoreDb.doc(`users/${message.userId}/messageTemplates/${message.templateId}`).get();
+
+        const defaultTemp = defaultTemplates.find(
+          t => t.name === message.templateId
+        );
+
+        if (!defaultTemp) {
+          const templateDoc = await firestoreDb
+            .doc(`users/${message.userId}/messageTemplates/${message.templateId}`)
+            .get();
+
           if (templateDoc.exists) {
-            templateName = templateDoc.data()?.name || templateDoc.data()?.title; 
+            templateName =
+              templateDoc.data()?.name ||
+              templateDoc.data()?.title;
           }
         }
 
-        // 4. Monta as variáveis (Components) para a Meta
+        // 🧱 Monta componentes
         const components = [
           {
             type: "body",
             parameters: [
-              { type: "text", text: patient.name },  
-              { type: "text", text: clinicName }     
+              { type: "text", text: patient.name },
+              { type: "text", text: clinicName }
             ]
           }
         ];
 
-        // 5. Envia a mensagem
-        await sendTemplateMessage(message.userId, patient.phone, templateName, components);
+        // 🚀 Envia para Meta
+        await sendTemplateMessage(
+          message.userId,
+          patient.phone,
+          templateName,
+          components
+        );
 
-        // 6. Atualiza o status no banco
-        await messageRef.update({ 
-          status: 'sent', 
-          sentAt: Timestamp.now() 
+        // ✅ Marca como Enviado
+        await messageRef.update({
+          status: 'Enviado',
+          sentAt: Timestamp.now()
         });
 
-        console.log(`CRON: Mensagem ${message.id} enviada para ${patient.name}.`);
+        console.log(`CRON: Mensagem ${message.id} enviada.`);
 
       } catch (error: any) {
-        console.error(`CRON: Falha msg ${message.id}:`, error.message);
-        await messageRef.update({ 
-          status: 'failed', 
-          error: error.message 
+        console.error(`CRON: Falha msg ${doc.id}:`, error.message);
+
+        await messageRef.update({
+          status: 'Falhou',
+          error: error.message,
+          failedAt: Timestamp.now()
         });
       }
     });
 
     await Promise.all(processingPromises);
 
-    return NextResponse.json({ success: true, processed: querySnapshot.size });
+    return NextResponse.json({
+      success: true,
+      processed: querySnapshot.size
+    });
 
   } catch (error: any) {
     console.error('CRON: Erro crítico.', error);
-    return new NextResponse(`Erro interno: ${error.message}`, { status: 500 });
+
+    return new NextResponse(
+      `Erro interno: ${error.message}`,
+      { status: 500 }
+    );
   }
 }
