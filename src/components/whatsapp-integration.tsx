@@ -16,7 +16,8 @@ declare global {
   }
 }
 
-const META_APP_ID = '821688910682652';
+const META_APP_ID = process.env.NEXT_PUBLIC_META_CLIENT_ID || '821688910682652';
+const META_CONFIG_ID = process.env.NEXT_PUBLIC_META_CONFIG_ID;
 
 export function WhatsappIntegration() {
   const { user } = useUser();
@@ -78,16 +79,16 @@ export function WhatsappIntegration() {
     if (!user) return;
 
     if (response.authResponse) {
-        // MUDANÇA AQUI: Pegamos o accessToken direto, em vez do code
-        const accessToken = response.authResponse.accessToken; 
+        // ETAPA 2: Pegamos o 'code' retornado pelo Embedded Signup
+        const code = response.authResponse.code; 
         
-        if (accessToken) {
+        if (code) {
             try {
-                // Envia o token para o backend apenas para salvar/estender
+                // Envia o código para o backend fazer a troca segura (OAuth Dance)
                 const res = await fetch('/api/whatsapp/exchange-token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accessToken, userId: user.uid })
+                    body: JSON.stringify({ code, userId: user.uid })
                 });
 
                 if (res.ok) {
@@ -107,8 +108,8 @@ export function WhatsappIntegration() {
                 toast({ variant: "destructive", title: "Erro", description: "Falha na conexão com o servidor." });
             }
         } else {
-             console.error("Token não recebido:", response);
-             toast({ variant: "destructive", title: "Erro", description: "A Meta não retornou o token de acesso." });
+             console.error("Code não recebido:", response);
+             toast({ variant: "destructive", title: "Erro", description: "A Meta não retornou o código de autorização." });
         }
     } else {
         console.log('Login cancelado.');
@@ -135,9 +136,8 @@ export function WhatsappIntegration() {
       clearTimeout(loginTimeout);
       processFacebookResponse(response);
     }, {
-      // Configuração corrigida sem email
-      scope: 'public_profile,whatsapp_business_management,whatsapp_business_messaging',
-      response_type: 'token', // Mudamos para pedir o token explicitamente (embora o SDK ja mande)
+      config_id: META_CONFIG_ID, // ID da configuração do Embedded Signup
+      response_type: 'code',     // Exigimos o code de volta, não o token
       override_default_response_type: true,
       extras: {
         setup: {}
