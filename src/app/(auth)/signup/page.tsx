@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { FirebaseError } from "firebase/app"
-import { AppLogo } from "@/components/app-logo";
+import { AppLogo } from "@/components/app-logo"
 
 import { useAuth, useUser, useFirestore } from "@/firebase/provider"
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates"
@@ -34,6 +34,7 @@ export default function SignupPage() {
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -44,40 +45,62 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!acceptedPolicies) {
+      toast({
+        variant: "destructive",
+        title: "Aceite obrigatório",
+        description: "Você precisa aceitar os Termos de Uso e a Política de Privacidade para criar sua conta.",
+      })
+      return
+    }
+
     setIsSubmitting(true)
+
     try {
       const userCredential: UserCredential = await createUserWithEmailAndPassword(auth, email, password)
 
       if (userCredential && userCredential.user) {
-        const userRef = doc(firestore, "users", userCredential.user.uid);
+        const now = new Date().toISOString()
+        const userRef = doc(firestore, "users", userCredential.user.uid)
+
         const newUser = {
           id: userCredential.user.uid,
           name: `${firstName} ${lastName}`,
           email: email,
           onboardingCompleted: false,
-        };
-        // This is a non-blocking call. We don't need to wait for it to complete.
-        setDocumentNonBlocking(userRef, newUser, { merge: true });
+
+          termsAccepted: true,
+          termsAcceptedAt: now,
+          termsVersion: "v1",
+
+          privacyAccepted: true,
+          privacyAcceptedAt: now,
+          privacyVersion: "v1",
+        }
+
+        setDocumentNonBlocking(userRef, newUser, { merge: true })
+      }
+    } catch (error: any) {
+      let description = "Ocorreu um erro desconhecido. Tente novamente."
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            description = "Este e-mail já está em uso por outra conta."
+            break
+          case "auth/weak-password":
+            description = "A senha é muito fraca. Por favor, use pelo menos 6 caracteres."
+            break
+          case "auth/invalid-email":
+            description = "O formato do e-mail é inválido."
+            break
+          default:
+            description = "Ocorreu um erro ao tentar criar a conta."
+        }
       }
 
-    } catch (error: any) {
-       let description = "Ocorreu um erro desconhecido. Tente novamente."
-       if (error instanceof FirebaseError) {
-          switch (error.code) {
-            case 'auth/email-already-in-use':
-              description = 'Este e-mail já está em uso por outra conta.';
-              break;
-            case 'auth/weak-password':
-              description = 'A senha é muito fraca. Por favor, use pelo menos 6 caracteres.';
-              break;
-            case 'auth/invalid-email':
-              description = 'O formato do e-mail é inválido.';
-              break;
-            default:
-              description = 'Ocorreu um erro ao tentar criar a conta.';
-          }
-       }
-       toast({
+      toast({
         variant: "destructive",
         title: "Erro de Cadastro",
         description: description,
@@ -95,7 +118,6 @@ export default function SignupPage() {
     )
   }
 
-
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="items-center text-center">
@@ -105,18 +127,35 @@ export default function SignupPage() {
           Crie sua conta para começar a otimizar sua comunicação.
         </CardDescription>
       </CardHeader>
+
       <CardContent>
         <form onSubmit={handleSignup} className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="first-name">Nome</Label>
-              <Input id="first-name" placeholder="João" required value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={isSubmitting} />
+              <Input
+                id="first-name"
+                placeholder="João"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                disabled={isSubmitting}
+              />
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="last-name">Sobrenome</Label>
-              <Input id="last-name" placeholder="Silva" required value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={isSubmitting} />
+              <Input
+                id="last-name"
+                placeholder="Silva"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="email">E-mail</Label>
             <Input
@@ -129,14 +168,60 @@ export default function SignupPage() {
               disabled={isSubmitting}
             />
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="password">Senha</Label>
-            <Input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} disabled={isSubmitting} />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
+            />
           </div>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+
+          <div className="flex items-start gap-2 rounded-md border p-3 text-sm">
+            <input
+              id="accept-policies"
+              type="checkbox"
+              checked={acceptedPolicies}
+              onChange={(e) => setAcceptedPolicies(e.target.checked)}
+              disabled={isSubmitting}
+              className="mt-1"
+            />
+            <Label htmlFor="accept-policies" className="leading-5 text-sm font-normal">
+              Li e concordo com os{" "}
+              <Link
+                href="https://vitallink.clinic/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Termos de Uso
+              </Link>{" "}
+              e com a{" "}
+              <Link
+                href="https://vitallink.clinic/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Política de Privacidade
+              </Link>
+              .
+            </Label>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || !acceptedPolicies}
+          >
             {isSubmitting ? "Criando conta..." : "Criar conta"}
           </Button>
         </form>
+
         <div className="mt-4 text-center text-sm">
           Já tem uma conta?{" "}
           <Link href="/login" className="underline">
