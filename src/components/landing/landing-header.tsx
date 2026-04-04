@@ -12,9 +12,9 @@ export function LandingHeader() {
   const [isMenuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "#features", label: "Funcionalidades" },
-    { href: "#testimonials", label: "Depoimentos" },
-    { href: "/support", label: "Suporte" },
+    { href: "/sobre-nos", label: "Sobre nós" },
+    { href: "/funcionalidades", label: "Funcionalidades" },
+    { href: "/contato", label: "Contato" },
   ];
 
   const NavItems = ({ inSheet = false }: { inSheet?: boolean }) => (

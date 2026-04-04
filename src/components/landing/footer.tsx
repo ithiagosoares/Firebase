@@ -5,8 +5,9 @@ import { AppLogo } from "@/components/app-logo"
 
 export function Footer() {
   const rapidLinks = [
-    { href: "#features", label: "Sobre" },
-    { href: "mailto:suporte@vitallink.clinic", label: "Contato" },
+    { href: "/sobre-nos", label: "Sobre nós" },
+    { href: "/funcionalidades", label: "Funcionalidades" },
+    { href: "/contato", label: "Contato" },
     { href: "/blog", label: "Blog" },
   ];
 

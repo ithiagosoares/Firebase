@@ -87,7 +87,7 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <p className="pt-4 border-t">
-                Se tiver alguma dúvida sobre como lidamos com dados do usuário e informações pessoais, entre em contato conosco através do e-mail <a href="mailto:suporte@vitallink.clinic" className="text-primary">suporte@vitallink.clinic</a>.
+                Se tiver alguma dúvida sobre como lidamos com dados do usuário e informações pessoais, entre em contato conosco através do e-mail <a href="mailto:contact@vitallink.clinic" className="text-primary">contact@vitallink.clinic</a>.
               </p>
             </CardContent>
           </Card>
