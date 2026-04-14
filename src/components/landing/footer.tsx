@@ -61,8 +61,9 @@ export function Footer() {
             </nav>
           </div>
         </div>
-        <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-500">
+        <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-500 space-y-1">
           <p>&copy; {new Date().getFullYear()} VitalLink. Todos os direitos reservados.</p>
+          <p className="text-xs text-gray-600">65.544.455 THIAGO DOS SANTOS SOARES</p>
         </div>
       </div>
     </footer>
