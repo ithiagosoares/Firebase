@@ -850,6 +850,9 @@ video {
 .mt-1 {
   margin-top: 0.25rem;
 }
+.mt-12 {
+  margin-top: 3rem;
+}
 .mt-16 {
   margin-top: 4rem;
 }
@@ -2036,6 +2039,9 @@ video {
 .font-semibold {
   font-weight: 600;
 }
+.uppercase {
+  text-transform: uppercase;
+}
 .italic {
   font-style: italic;
 }
@@ -2060,6 +2066,9 @@ video {
 }
 .tracking-tighter {
   letter-spacing: -0.05em;
+}
+.tracking-wide {
+  letter-spacing: 0.025em;
 }
 .tracking-widest {
   letter-spacing: 0.1em;
@@ -2652,6 +2661,11 @@ video {
 
 .hover\:text-foreground:hover {
   color: hsl(var(--foreground));
+}
+
+.hover\:text-gray-800:hover {
+  --tw-text-opacity: 1;
+  color: rgb(31 41 55 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-gray-900:hover {

@@ -24,6 +24,11 @@ export default function LandingPage() {
         <FaqSection />
         <CtaSection />
       </main>
+      <section className="py-4 text-center bg-white">
+        <p className="text-xs text-gray-400">
+          Razão Social: 65.544.455 THIAGO DOS SANTOS SOARES
+        </p>
+      </section>
       <Footer />
     </div>
   );
