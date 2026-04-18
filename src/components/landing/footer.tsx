@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { AppLogo } from "@/components/app-logo"
 
@@ -15,9 +13,10 @@ export function Footer() {
     { href: "/privacy", label: "Política de Privacidade" },
     { href: "/terms", label: "Termos de Uso" },
   ];
-  
+
   const legalLinks = [
     { href: "/data-request", label: "Solicitar Dados (LGPD)" },
+    { href: "/legal", label: "Informações Legais" },
   ]
 
   return (
